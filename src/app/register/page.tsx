@@ -1,4 +1,3 @@
-// src/app/register/page.tsx
 "use client";
 
 import React, { useState, FormEvent, useEffect } from "react";
@@ -18,7 +17,7 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (authUser) {
-      router.push("/"); // Redirect jika sudah login
+      router.push("/");
     }
   }, [authUser, router]);
 
@@ -28,7 +27,6 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      // Sesuaikan endpoint dengan backend Anda
       const response = await api.post("/auth/register", {
         name,
         email,
@@ -46,7 +44,6 @@ export default function RegisterPage() {
   };
 
   if (authUser) {
-    // Untuk menghindari flash konten jika redirect belum selesai
     return <div className="text-center p-10">Mengarahkan...</div>;
   }
 

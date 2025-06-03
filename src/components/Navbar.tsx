@@ -1,4 +1,3 @@
-// src/components/Navbar.tsx
 "use client";
 
 import Link from "next/link";
@@ -9,10 +8,10 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
-  // Jangan tampilkan navbar di halaman login/register jika diinginkan
-  // if (['/login', '/register'].includes(pathname)) {
-  //   return null;
-  // }
+  // tidak tampilkan navbar di halaman login/register jika diinginkan
+  if (["/login", "/register"].includes(pathname)) {
+    return null;
+  }
 
   return (
     <header className="bg-gray-800 text-white p-4 shadow-md">

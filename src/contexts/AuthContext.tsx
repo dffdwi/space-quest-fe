@@ -1,5 +1,4 @@
-// src/contexts/AuthContext.tsx
-"use client"; // Tandai sebagai Client Component
+"use client"; 
 
 import React, {
   createContext,
@@ -11,7 +10,6 @@ import React, {
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-// Definisikan tipe untuk user dan context
 interface User {
   id: number;
   email: string;
@@ -42,7 +40,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const clearAuthData = useCallback(() => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("authUser");
-    // Hapus cookie isLoggedIn saat logout
     document.cookie =
       "isLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     setToken(null);
@@ -73,8 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     (newToken: string, userData: User) => {
       localStorage.setItem("authToken", newToken);
       localStorage.setItem("authUser", JSON.stringify(userData));
-      // Set cookie isLoggedIn saat login
-      document.cookie = "isLoggedIn=true; path=/; max-age=" + 60 * 60 * 24 * 7; // Cookie untuk 7 hari
+      document.cookie = "isLoggedIn=true; path=/; max-age=" + 60 * 60 * 24 * 7; 
       setToken(newToken);
       setUser(userData);
       router.push("/");

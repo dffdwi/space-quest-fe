@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [notification, setNotification] = useState<string | null>(null);
 
   const router = useRouter();
-  const searchParams = useSearchParams(); // Untuk membaca query params
+  const searchParams = useSearchParams();
   const { login: authLogin, user: authUser } = useAuth();
 
   useEffect(() => {
@@ -28,24 +28,22 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (authUser) {
-      router.push("/"); // Redirect jika sudah login
+      router.push("/");
     }
   }, [authUser, router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    setNotification(null); // Hapus notifikasi saat mencoba login
+    setNotification(null);
     setIsLoading(true);
 
     try {
-      // Sesuaikan endpoint dan payload dengan backend Anda
       const response = await api.post("/auth/login", { email, password });
-      const { accessToken, user } = response.data; // Sesuaikan dengan struktur response backend
+      const { accessToken, user } = response.data;
 
       if (accessToken && user) {
         authLogin(accessToken, user);
-        // Redirect sudah dihandle oleh AuthContext
       } else {
         throw new Error("Respons tidak valid dari server");
       }
@@ -59,7 +57,6 @@ export default function LoginPage() {
   };
 
   if (authUser) {
-    // Untuk menghindari flash konten jika redirect belum selesai
     return <div className="text-center p-10">Mengarahkan...</div>;
   }
 
