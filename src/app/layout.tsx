@@ -1,15 +1,15 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
-import Navbar from "@/components/Navbar";
+import Sidebar from "@/components/SideBar";
+import AppHeader from "@/components/AppHeader";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "My Auth App",
-  // ...
+  title: "SpaceQuest",
+  description: "Embark on epic productivity missions!",
 };
 
 export default function RootLayout({
@@ -19,13 +19,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-gray-50`}>
+      <body
+        className={`${inter.className} bg-gray-900 text-gray-100 theme-dark`}
+      >
         <AuthProvider>
-          <Navbar /> {/* Tambahkan Navbar di sini */}
-          <main className="container mx-auto p-4 pt-6 md:p-6 md:pt-8">
-            {children}
-          </main>
-          {/* Footer bisa ditambahkan di sini jika perlu */}
+          <div className="flex h-screen overflow-hidden">
+            <Sidebar />
+            <main className="flex-1 overflow-y-auto no-scrollbar">
+              <AppHeader />
+              <div className="p-6 md:p-8">{children}</div>
+            </main>
+          </div>
         </AuthProvider>
       </body>
     </html>
