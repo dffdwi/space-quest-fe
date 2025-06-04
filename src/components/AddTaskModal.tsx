@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, FormEvent } from "react";
 import { PlayerTask } from "@/hooks/useGameData";
+import { ProjectMember, KanbanColumn } from "@/app/crew-projects/page";
 import { FaTimes, FaSave, FaPaperPlane } from "react-icons/fa";
 
 interface AddTaskModalProps {
@@ -13,6 +14,8 @@ interface AddTaskModalProps {
   ) => void;
   existingTask?: PlayerTask | null;
   projectId?: string | null;
+  projectMembers?: ProjectMember[];
+  projectColumns?: KanbanColumn[];
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({
@@ -21,6 +24,8 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   onSave,
   existingTask,
   projectId,
+  projectMembers = [],
+  projectColumns = [],
 }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -28,28 +33,45 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [xp, setXp] = useState(20);
   const [credits, setCredits] = useState(5);
   const [category, setCategory] = useState("");
+  const [assignedTo, setAssignedTo] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
 
   useEffect(() => {
-    if (existingTask) {
-      setTitle(existingTask.title);
-      setDescription(existingTask.description || "");
-      setDueDate(
-        existingTask.dueDate
-          ? new Date(existingTask.dueDate).toISOString().split("T")[0]
-          : ""
-      );
-      setXp(existingTask.xp);
-      setCredits(existingTask.credits || Math.floor(existingTask.xp / 4));
-      setCategory(existingTask.category || "");
-    } else {
-      setTitle("");
-      setDescription("");
-      setDueDate("");
-      setXp(20);
-      setCredits(5);
-      setCategory("");
+    if (isOpen) {
+      if (existingTask) {
+        setTitle(existingTask.title);
+        setDescription(existingTask.description || "");
+        setDueDate(
+          existingTask.dueDate
+            ? new Date(existingTask.dueDate).toISOString().split("T")[0]
+            : ""
+        );
+        setXp(existingTask.xp);
+        setCredits(existingTask.credits || Math.floor(existingTask.xp / 4));
+        setCategory(existingTask.category || "");
+        if (projectId) {
+          setAssignedTo(existingTask.assignedTo || null);
+          setStatus(
+            existingTask.status ||
+              (projectColumns.length > 0 ? projectColumns[0].id : "todo")
+          );
+        } else {
+          setAssignedTo(null);
+          setStatus("todo");
+        }
+      } else {
+        // Reset form untuk tugas baru
+        setTitle("");
+        setDescription("");
+        setDueDate("");
+        setXp(20);
+        setCredits(5);
+        setCategory("");
+        setAssignedTo(null);
+        setStatus(projectColumns.length > 0 ? projectColumns[0].id : "todo");
+      }
     }
-  }, [existingTask, isOpen, projectId]);
+  }, [existingTask, isOpen, projectId, projectColumns]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -66,6 +88,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         credits,
         category,
         projectId: projectId,
+        assignedTo: projectId ? assignedTo || null : null,
+        status: projectId
+          ? status ||
+            (projectColumns.length > 0 ? projectColumns[0].id : "todo")
+          : "todo",
       },
       existingTask?.id
     );
@@ -83,19 +110,23 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <FaTimes className="text-2xl" />
         </button>
         <h3 className="text-xl font-semibold text-indigo-300 mb-6 border-b border-gray-700 pb-3">
-          {existingTask ? "Edit Mission Log" : "Add New Mission Log"}
+          {existingTask
+            ? "Edit Mission Objective"
+            : projectId
+            ? "New Expedition Objective"
+            : "New Personal Log"}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
-              htmlFor="taskTitle"
+              htmlFor="taskTitleModal"
               className="block text-sm font-medium text-gray-300 mb-1"
             >
               Title <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              id="taskTitle"
+              id="taskTitleModal"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -104,13 +135,13 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           </div>
           <div>
             <label
-              htmlFor="taskDescription"
+              htmlFor="taskDescriptionModal"
               className="block text-sm font-medium text-gray-300 mb-1"
             >
               Description (Briefing)
             </label>
             <textarea
-              id="taskDescription"
+              id="taskDescriptionModal"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -120,14 +151,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label
-                htmlFor="taskDueDate"
+                htmlFor="taskDueDateModal"
                 className="block text-sm font-medium text-gray-300 mb-1"
               >
                 Due Date (Target ETA)
               </label>
               <input
                 type="date"
-                id="taskDueDate"
+                id="taskDueDateModal"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
@@ -135,17 +166,17 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
             <div>
               <label
-                htmlFor="taskCategory"
+                htmlFor="taskCategoryModal"
                 className="block text-sm font-medium text-gray-300 mb-1"
               >
                 Category (Log Type)
               </label>
               <input
                 type="text"
-                id="taskCategory"
+                id="taskCategoryModal"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                placeholder="E.g., Exploration, Maintenance"
+                placeholder="E.g., Engineering, Exploration"
                 className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
@@ -153,14 +184,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label
-                htmlFor="taskXp"
+                htmlFor="taskXpModal"
                 className="block text-sm font-medium text-gray-300 mb-1"
               >
                 XP Reward
               </label>
               <input
                 type="number"
-                id="taskXp"
+                id="taskXpModal"
                 value={xp}
                 onChange={(e) => setXp(parseInt(e.target.value, 10))}
                 min="5"
@@ -171,14 +202,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
             <div>
               <label
-                htmlFor="taskCredits"
+                htmlFor="taskCreditsModal"
                 className="block text-sm font-medium text-gray-300 mb-1"
               >
                 Cosmic Credits (Bonus)
               </label>
               <input
                 type="number"
-                id="taskCredits"
+                id="taskCreditsModal"
                 value={credits}
                 onChange={(e) => setCredits(parseInt(e.target.value, 10))}
                 min="0"
@@ -188,12 +219,56 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             </div>
           </div>
 
+          {projectId &&
+            projectMembers.length > 0 &&
+            projectColumns.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="taskAssignedToModal"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
+                    Assign To Crew Member
+                  </label>
+                  <select
+                    id="taskAssignedToModal"
+                    value={assignedTo || ""}
+                    onChange={(e) => setAssignedTo(e.target.value || null)}
+                    className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {projectMembers.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="taskStatusModal"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
+                    Objective Status
+                  </label>
+                  <select
+                    id="taskStatusModal"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    {projectColumns.map((col) => (
+                      <option key={col.id} value={col.id}>
+                        {col.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
           <div className="flex justify-end pt-4 space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-secondary"
-            >
+            <button type="button" onClick={onClose} className="btn ">
               Cancel Transmission
             </button>
             <button type="submit" className="btn btn-primary">
@@ -202,7 +277,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               ) : (
                 <FaPaperPlane className="mr-2" />
               )}
-              {existingTask ? "Save Changes" : "Transmit Log"}
+              {existingTask
+                ? "Save Changes"
+                : projectId
+                ? "Add Objective"
+                : "Log Entry"}
             </button>
           </div>
         </form>

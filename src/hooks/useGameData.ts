@@ -16,6 +16,9 @@ import {
   FaUserAstronaut,
   FaGraduationCap,
   FaCoins,
+  FaFlask,
+  FaStar,
+  FaPalette,
 } from "react-icons/fa";
 
 export interface PlayerTask {
@@ -64,7 +67,8 @@ export interface ShopItem {
   type: "theme" | "avatar_frame" | "power_up" | "cosmetic";
   value: string;
   icon: React.ElementType;
-  category?: string;
+  category?: "Ship Customization" | "Commander Gear" | "Consumables";
+  duration?: number;
 }
 
 export interface PlayerStats {
@@ -87,9 +91,16 @@ export interface PlayerData {
   tasks: PlayerTask[];
   missions: PlayerMission[];
   earnedBadgeIds: string[];
-  purchasedShopItemIds: string[];
-  activeTheme: string;
-  avatarFrameId: string | null;
+  purchasedShopItemIds: string[]; // Menyimpan ID item yang sudah dibeli (non-konsumtif)
+  activeTheme: string; // Menyimpan nama class tema aktif
+  avatarFrameId: string | null; // Menyimpan ID frame avatar aktif
+  activePowerUps?: {
+    [powerUpId: string]: {
+      active: boolean;
+      usesLeft?: number;
+      expiresAt?: number;
+    };
+  };
   dailyLogin: {
     lastLoginDate: string | null;
     streak: number;
@@ -162,11 +173,68 @@ export const ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [
   },
 ];
 
+export const SHOP_ITEMS_CONFIG: ShopItem[] = [
+  {
+    id: "theme_nebula_dark",
+    name: "Nebula Dark Theme",
+    description:
+      "Navigate the cosmos in a sleek, dark interface with vibrant nebula accents.",
+    price: 250,
+    type: "theme",
+    value: "theme-nebula-dark",
+    icon: FaPalette,
+    category: "Ship Customization",
+  },
+  {
+    id: "theme_starfield_light",
+    name: "Starfield Light Theme",
+    description:
+      "A bright and clear interface, like gazing upon a field of distant stars.",
+    price: 200,
+    type: "theme",
+    value: "theme-starfield-light",
+    icon: FaPalette,
+    category: "Ship Customization",
+  },
+  {
+    id: "avatar_frame_gold_commander",
+    name: "Gold Commander Frame",
+    description: "A prestigious gold frame for your commander avatar.",
+    price: 150,
+    type: "avatar_frame",
+    value: "gold-commander-frame",
+    icon: FaStar,
+    category: "Commander Gear",
+  },
+  {
+    id: "avatar_frame_nova_burst",
+    name: "Nova Burst Frame",
+    description: "An energetic frame resembling a stellar nova.",
+    price: 120,
+    type: "avatar_frame",
+    value: "nova-burst-frame",
+    icon: FaStar,
+    category: "Commander Gear",
+  },
+  {
+    id: "power_up_xp_boost_small",
+    name: "XP Hyper-Boost (Small)",
+    description:
+      "Doubles XP gained from the next completed mission log. Single use.",
+    price: 75,
+    type: "power_up",
+    value: "xp_boost_small_1use",
+    icon: FaFlask,
+    category: "Consumables",
+    duration: 1,
+  },
+];
+
 const initialPlayerDataTemplate = (authUser: AuthUser | null): PlayerData => ({
-  id: authUser?.id || "defaultUser",
+  id: authUser ? String(authUser.id) : "defaultUser",
   name: authUser?.name || authUser?.email?.split("@")[0] || "Explorer",
   avatarUrl:
-    // authUser?.photoURL ||
+    (authUser as any)?.photoURL ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(
       authUser?.name || authUser?.email || "S"
     )}&background=7c3aed&color=fff&size=60`,
@@ -201,9 +269,10 @@ const initialPlayerDataTemplate = (authUser: AuthUser | null): PlayerData => ({
     },
   ],
   earnedBadgeIds: [],
-  purchasedShopItemIds: [],
-  activeTheme: "theme-dark",
-  avatarFrameId: null,
+  purchasedShopItemIds: [], // Inisialisasi
+  activeTheme: "theme-dark", // Default theme dari layout.tsx
+  avatarFrameId: null, // Inisialisasi
+  activePowerUps: {}, // Inisialisasi
   dailyLogin: { lastLoginDate: null, streak: 0, bonusClaimedToday: false },
   dailyDiscovery: { lastClaimedDate: null, available: true },
   stats: {
@@ -287,20 +356,23 @@ export const useGameData = (authUser: AuthUser | null) => {
         | ((prevState: PlayerData) => Partial<PlayerData>)
     ) => {
       setPlayerData((currentPlayerData) => {
+        // currentPlayerData adalah PlayerData | null
         if (typeof newChanges === "function") {
+          // Jika state saat ini null, dan newChanges adalah fungsi, kita tidak bisa memanggilnya
+          // karena ia mengharapkan PlayerData non-null.
           if (currentPlayerData === null) {
-            console.warn(
-              "updatePlayerData (functional update) called while current player data is null. Update skipped."
-            );
-            return null;
+            // console.warn("updatePlayerData (functional update) called while current player data is null. Update skipped.");
+            return null; // Kembalikan state saat ini (null)
           }
+          // Di sini, currentPlayerData adalah PlayerData (non-null)
           const changesToApply = newChanges(currentPlayerData);
           return { ...currentPlayerData, ...changesToApply };
         } else {
+          // newChanges adalah Partial<PlayerData> (sebuah objek)
           if (currentPlayerData === null) {
-            console.warn(
-              "updatePlayerData (object update) called while current player data is null. Update skipped."
-            );
+            // console.warn("updatePlayerData (object update) called while current player data is null. Update skipped.");
+            // Jika ingin mengizinkan ini sebagai inisialisasi, periksa apakah newChanges adalah PlayerData lengkap.
+            // Untuk sekarang, asumsikan ini adalah pembaruan parsial, jadi kita skip jika state awal null.
             return null;
           }
           return { ...currentPlayerData, ...newChanges };
@@ -309,29 +381,26 @@ export const useGameData = (authUser: AuthUser | null) => {
     },
     []
   );
-
   const addTask = useCallback(
     (
       newTaskData: Omit<
         PlayerTask,
         "id" | "completed" | "completedAt" | "status"
-      >
+      > // Mengharapkan 'status' TIDAK ADA di newTaskData
     ) => {
       const taskToAdd: PlayerTask = {
-        ...newTaskData,
-        id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        ...newTaskData, // Termasuk title, description, xp, credits, category, projectId, assignedTo (jika ada)
+        id: `task-<span class="math-inline">\{Date\.now\(\)\}\-</span>{Math.random().toString(36).substr(2, 9)}`,
         completed: false,
-        status: "todo",
-        assignedTo:
-          newTaskData.assignedTo === undefined
-            ? playerData?.id
-              ? String(playerData.id)
-              : null
-            : newTaskData.assignedTo
-            ? String(newTaskData.assignedTo)
-            : null,
+        status: "todo", // addTask mengatur status default di sini
+        assignedTo: newTaskData.assignedTo
+          ? String(newTaskData.assignedTo) // Pastikan string jika ada
+          : playerData?.id
+          ? String(playerData.id)
+          : null, // Default ke ID pemain saat ini (string) atau null
       };
       updatePlayerData((prevPlayerData: PlayerData) => {
+        // prevPlayerData dijamin non-null
         return { tasks: [taskToAdd, ...(prevPlayerData.tasks || [])] };
       });
       window.showGlobalNotification?.({
@@ -671,6 +740,150 @@ export const useGameData = (authUser: AuthUser | null) => {
     }
   }, [playerData?.id, isLoadingData, authUser]);
 
+  const purchaseShopItem = useCallback(
+    (itemId: string) => {
+      const item = SHOP_ITEMS_CONFIG.find((i) => i.id === itemId);
+      if (!item) {
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Artifact Not Found",
+          message: "The requested item does not exist in the Star Market.",
+        });
+        return false;
+      }
+
+      updatePlayerData((prev: PlayerData): Partial<PlayerData> => {
+        if (prev.credits < item.price) {
+          window.showGlobalNotification?.({
+            type: "error",
+            title: "Insufficient Credits",
+            message: `You need ${item.price} CP for ${item.name}. You have ${prev.credits} CP.`,
+          });
+          return {}; // Tidak ada perubahan
+        }
+
+        // Cek apakah item non-konsumtif sudah dibeli
+        if (
+          item.type !== "power_up" &&
+          prev.purchasedShopItemIds.includes(itemId)
+        ) {
+          window.showGlobalNotification?.({
+            type: "info",
+            title: "Already Acquired",
+            message: `You already own the artifact: ${item.name}.`,
+          });
+          return {}; // Tidak ada perubahan
+        }
+
+        // Cek apakah power-up yang sama sudah aktif (jika tidak bisa stack)
+        if (
+          item.type === "power_up" &&
+          prev.activePowerUps?.[item.value]?.active
+        ) {
+          window.showGlobalNotification?.({
+            type: "warning",
+            title: "Power-up Active",
+            message: `${item.name} is already active or a similar boost is in effect.`,
+          });
+          return {};
+        }
+
+        const newCredits = prev.credits - item.price;
+        let newPurchasedShopItemIds = [...prev.purchasedShopItemIds];
+        let newActiveTheme = prev.activeTheme;
+        let newAvatarFrameId = prev.avatarFrameId;
+        let newActivePowerUps = { ...(prev.activePowerUps || {}) };
+
+        let notificationTitle = "Artifact Acquired!";
+        let notificationMessage = `You have successfully acquired ${item.name}!`;
+        let notificationIcon: React.ElementType = item.icon || FaGift;
+
+        if (item.type === "theme") {
+          newActiveTheme = item.value;
+          if (!newPurchasedShopItemIds.includes(itemId))
+            newPurchasedShopItemIds.push(itemId);
+          notificationMessage = `Ship's interface theme changed to ${item.name}.`;
+        } else if (item.type === "avatar_frame") {
+          newAvatarFrameId = item.value;
+          if (!newPurchasedShopItemIds.includes(itemId))
+            newPurchasedShopItemIds.push(itemId);
+          notificationMessage = `Commander avatar frame set to ${item.name}.`;
+        } else if (item.type === "power_up") {
+          // Jika power-up bisa stack atau memiliki durasi/penggunaan, logika di sini
+          newActivePowerUps[item.value] = {
+            active: true,
+            usesLeft: item.duration,
+          }; // Misal: durasi adalah jumlah penggunaan
+          notificationTitle = "Power-up Activated!";
+          notificationMessage = `${item.name} is now active! (${
+            item.duration
+          } use${item.duration === 1 ? "" : "s"} left).`;
+          // Item power-up mungkin tidak masuk ke purchasedShopItemIds jika bersifat consumable dan bisa dibeli berkali-kali
+          // atau masuk jika hanya bisa diaktifkan sekali setelah pembelian. Untuk contoh ini, kita tidak menambahkannya ke purchased.
+        } else if (item.type === "cosmetic") {
+          if (!newPurchasedShopItemIds.includes(itemId))
+            newPurchasedShopItemIds.push(itemId);
+        }
+
+        window.showGlobalNotification?.({
+          type: "success",
+          title: notificationTitle,
+          message: notificationMessage,
+          icon: notificationIcon,
+        });
+
+        return {
+          credits: newCredits,
+          purchasedShopItemIds: newPurchasedShopItemIds,
+          activeTheme: newActiveTheme,
+          avatarFrameId: newAvatarFrameId,
+          activePowerUps: newActivePowerUps,
+          stats: {
+            ...prev.stats,
+            totalCreditsEarned: prev.stats.totalCreditsEarned, // total earned tidak berubah, hanya spent
+          },
+        };
+      });
+      return true; // Pembelian berhasil (atau setidaknya diproses)
+    },
+    [updatePlayerData]
+  );
+
+  // Fungsi untuk menggunakan power-up (contoh)
+  const consumePowerUp = useCallback(
+    (powerUpValue: string) => {
+      updatePlayerData((prev) => {
+        if (!prev.activePowerUps || !prev.activePowerUps[powerUpValue]?.active)
+          return {};
+
+        const powerUp = prev.activePowerUps[powerUpValue];
+        let usesLeft = powerUp.usesLeft;
+        let isActive = powerUp.active;
+
+        if (usesLeft !== undefined) {
+          usesLeft--;
+          if (usesLeft <= 0) {
+            isActive = false;
+            window.showGlobalNotification?.({
+              type: "info",
+              title: "Power-up Depleted",
+              message: `Power-up ${powerUpValue} has been used up.`,
+            });
+          }
+        }
+        // Jika power-up berbasis waktu, logika berbeda
+
+        return {
+          activePowerUps: {
+            ...prev.activePowerUps,
+            [powerUpValue]: { ...powerUp, active: isActive, usesLeft },
+          },
+        };
+      });
+    },
+    [updatePlayerData]
+  );
+
   return {
     playerData,
     isLoadingData,
@@ -680,5 +893,7 @@ export const useGameData = (authUser: AuthUser | null) => {
     completeTask,
     getXpBoundaries,
     handleDailyLogin,
+    purchaseShopItem,
+    consumePowerUp,
   };
 };
