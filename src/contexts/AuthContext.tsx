@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-interface User {
+export interface User {
   id: number;
   email: string;
   name?: string;
