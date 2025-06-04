@@ -43,7 +43,6 @@ const pageConfigs: {
 const AppHeader = () => {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-
   const { playerData, isLoadingData, getXpBoundaries } = useGameData(user);
 
   const pageConfig = pageConfigs[pathname] || {
@@ -52,7 +51,9 @@ const AppHeader = () => {
   };
   const subtitleText =
     typeof pageConfig.subtitle === "function"
-      ? pageConfig.subtitle(playerData?.name)
+      ? pageConfig.subtitle(
+          playerData?.name || user?.name || user?.email?.split("@")[0]
+        )
       : pageConfig.subtitle;
 
   if (isLoadingData || !playerData) {
@@ -73,17 +74,28 @@ const AppHeader = () => {
               Logout
             </button>
           )}
+          {!user && pathname !== "/login" && pathname !== "/register" && (
+            <div className="mt-4 sm:mt-0">
+              <Link href="/login" className="btn btn-primary mr-2">
+                Login
+              </Link>
+              <Link href="/register" className="btn btn-secondary">
+                Register
+              </Link>
+            </div>
+          )}
         </div>
       </header>
     );
   }
 
-  const { xpInCurrentLevel, totalXpForNextLevel } = getXpBoundaries();
-  const xpProgressPercentage = totalXpForNextLevel
-    ? (xpInCurrentLevel / totalXpForNextLevel) * 100
-    : playerData.level === XP_PER_LEVEL.length - 1
-    ? 100
-    : 0;
+  const { xpInCurrentLevel, totalXpForThisLevel } = getXpBoundaries();
+  const xpProgressPercentage =
+    totalXpForThisLevel > 0
+      ? (xpInCurrentLevel / totalXpForThisLevel) * 100
+      : playerData.level >= XP_PER_LEVEL.length - 1
+      ? 100
+      : 0;
 
   return (
     <header className="mb-8 sticky top-0 bg-gray-800 pt-6 pb-4 z-50 -mx-6 md:-mx-8 px-6 md:px-8 border-b border-gray-700">
@@ -104,20 +116,27 @@ const AppHeader = () => {
                 playerData.avatarFrameId ? "avatar-frame-active" : ""
               }`}
             />
-            <div className="flex-grow">
+            <div className="flex-grow min-w-[100px] sm:min-w-[120px]">
+              {" "}
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-sm md:text-base text-gray-200">
-                  Level {playerData.level}
+                <span
+                  className="font-semibold text-sm md:text-base text-gray-200 truncate"
+                  title={`Level ${playerData.level}`}
+                >
+                  Lvl {playerData.level}
                 </span>
                 {playerData.dailyLogin.streak > 0 &&
                   playerData.dailyLogin.bonusClaimedToday && (
-                    <span className="text-xs text-amber-400 font-semibold flex items-center">
+                    <span className="text-xs text-amber-400 font-semibold flex items-center ml-1">
                       <FaFire className="mr-1" />
                       {playerData.dailyLogin.streak}
                     </span>
                   )}
               </div>
-              <div className="w-full h-3.5 xp-bar-container mt-1">
+              <div
+                className="w-full h-3.5 xp-bar-container mt-1"
+                title={`${xpInCurrentLevel} / ${totalXpForThisLevel} XP`}
+              >
                 <div
                   className="xp-bar"
                   style={{
@@ -127,36 +146,41 @@ const AppHeader = () => {
                     )}%`,
                   }}
                 >
-                  {playerData.level === XP_PER_LEVEL.length - 1
-                    ? "MAX"
-                    : `${xpInCurrentLevel}/${totalXpForNextLevel}`}{" "}
-                  XP
+                  {playerData.level < XP_PER_LEVEL.length - 1 &&
+                    totalXpForThisLevel > 0 &&
+                    ((xpInCurrentLevel > 0 && xpProgressPercentage > 15) ||
+                    totalXpForThisLevel === 0
+                      ? `${xpInCurrentLevel}/${totalXpForThisLevel}`
+                      : "")}
+                  {playerData.level >= XP_PER_LEVEL.length - 1 && "MAX"}
                 </div>
               </div>
             </div>
             <div className="text-center pl-2 border-l border-gray-600">
-              <FaCoins className="text-yellow-400 text-lg md:text-xl" />
+              <FaCoins className="text-yellow-400 text-lg md:text-xl mx-auto" />
               <span className="block text-xs md:text-sm font-semibold text-gray-200">
                 {playerData.credits} CP
               </span>
             </div>
-            <button onClick={logout} className="btn btn-danger text-xs ml-2">
+            <button
+              onClick={logout}
+              className="btn btn-danger text-xs ml-2 !p-2 sm:!px-3"
+            >
               Logout
             </button>
           </div>
         ) : (
-          <div className="mt-4 sm:mt-0">
-            {pathname !== "/login" && (
+          pathname !== "/login" &&
+          pathname !== "/register" && (
+            <div className="mt-4 sm:mt-0">
               <Link href="/login" className="btn btn-primary mr-2">
                 Login
               </Link>
-            )}
-            {pathname !== "/register" && (
               <Link href="/register" className="btn btn-secondary">
                 Register
               </Link>
-            )}
-          </div>
+            </div>
+          )
         )}
       </div>
     </header>
