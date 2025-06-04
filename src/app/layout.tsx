@@ -1,22 +1,17 @@
 "use client";
 
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter } from "next/font/google"; // Pastikan 'Inter' diimpor dengan benar
 import "./globals.css";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useGameData, PlayerData } from "@/hooks/useGameData"; // Impor PlayerData jika belum
 import Sidebar from "@/components/SideBar";
 import AppHeader from "@/components/AppHeader";
 import GlobalNotification, {
   NotificationMessage,
 } from "@/components/GlobalNotification";
-import { useState, useEffect } from "react";
-import { useGameData } from "@/hooks/useGameData";
+import { useState, useEffect, ReactNode } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
-
-interface NotificationEventDetail {
-  detail: Omit<NotificationMessage, "id">;
-}
 
 declare global {
   interface Window {
@@ -24,23 +19,54 @@ declare global {
   }
 }
 
-function AppBody({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  const { playerData } = useGameData(user); // Ambil playerData
+interface AppBodyProps {
+  children: ReactNode;
+}
 
-  // Tentukan tema berdasarkan playerData atau default
-  const activeTheme = playerData?.activeTheme || "theme-dark"; // Default jika playerData belum ada
+function AppBody({ children }: AppBodyProps) {
+  const { user } = useAuth();
+  const { playerData, isLoadingData: isGameDataLoading } = useGameData(user);
 
   useEffect(() => {
-    document.body.className = ""; // Hapus semua class tema sebelumnya
-    document.body.classList.add(inter.className, activeTheme);
-    // Tambahkan class dasar lainnya jika perlu, mis. text-gray-100 untuk tema gelap default
-    if (activeTheme.includes("dark")) {
-      document.body.classList.add("bg-gray-900", "text-gray-100");
-    } else {
-      document.body.classList.add("bg-gray-100", "text-gray-800"); // Contoh untuk tema terang
+    // Apply dynamic theme only after client-side data is loaded and available
+    if (!isGameDataLoading && playerData) {
+      const themeToApply = playerData.activeTheme || "theme-dark"; // Default theme
+      const body = document.body;
+
+      // Remove previous theme-related classes carefully, preserving font class
+      const currentClasses = Array.from(body.classList);
+      const themeClassesToRemove: string[] = [];
+
+      currentClasses.forEach((cls) => {
+        if (
+          cls.startsWith("theme-") ||
+          cls === "bg-gray-900" ||
+          cls === "text-gray-100" ||
+          cls === "bg-gray-100" ||
+          cls === "text-gray-800"
+        ) {
+          if (cls !== inter.className) {
+            // Ensure font class is not removed
+            themeClassesToRemove.push(cls);
+          }
+        }
+      });
+
+      if (themeClassesToRemove.length > 0) {
+        body.classList.remove(...themeClassesToRemove);
+      }
+
+      // Add new theme and its base styling classes
+      body.classList.add(themeToApply);
+      // Apply base background and text colors based on the new theme
+      // This assumes 'theme-dark' and 'theme-default' are dark, others are light. Adjust as needed.
+      if (themeToApply.includes("dark") || themeToApply === "theme-default") {
+        body.classList.add("bg-gray-900", "text-gray-100");
+      } else {
+        body.classList.add("bg-gray-100", "text-gray-800");
+      }
     }
-  }, [activeTheme]);
+  }, [playerData, isGameDataLoading]); // Dependencies for the effect
 
   return <>{children}</>;
 }
@@ -55,33 +81,42 @@ export default function RootLayout({
   );
 
   useEffect(() => {
-    /* ... (setup showGlobalNotification sama) ... */
+    window.showGlobalNotification = (
+      detail: Omit<NotificationMessage, "id">
+    ) => {
+      setNotification({ ...detail, id: `notif-${Date.now()}` });
+    };
+    // No cleanup needed for window.showGlobalNotification as RootLayout persists
   }, []);
+
   const handleDismissNotification = () => {
-    /* ... (sama) ... */
+    setNotification(null);
   };
 
   useEffect(() => {
+    // Set a default title if needed, dynamic titles per page are better handled by Next.js metadata API
     document.title = "SpaceQuest";
   }, []);
 
   return (
     <html lang="en">
+      {/* Ensure no extraneous whitespace within the <head> tag or between its children */}
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>SpaceQuest</title>
         <meta
           name="description"
           content="Embark on epic productivity missions!"
         />
         <link rel="icon" href="/favicon.ico" />
       </head>
-      {/* Body class akan diatur oleh AppBody */}
-      <body>
+      {/* Initial body classes for server render and first client paint, matching a default theme */}
+      <body
+        className={`${inter.className} theme-dark bg-gray-900 text-gray-100`}
+      >
         <AuthProvider>
           <AppBody>
-            {" "}
-            {/* Bungkus dengan AppBody untuk akses context tema */}
             <div className="flex h-screen overflow-hidden">
               <Sidebar />
               <main className="flex-1 overflow-y-auto no-scrollbar">
