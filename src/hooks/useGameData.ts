@@ -21,6 +21,7 @@ import {
   FaPalette,
   FaRedo,
   FaTrophy,
+  FaBolt,
 } from "react-icons/fa";
 
 export interface PlayerTask {
@@ -379,7 +380,7 @@ export const useGameData = (authUser: AuthUser | null) => {
       newTaskData: Omit<
         PlayerTask,
         "id" | "completed" | "completedAt" | "status"
-      > 
+      >
     ) => {
       const taskToAdd: PlayerTask = {
         ...newTaskData,
@@ -387,7 +388,7 @@ export const useGameData = (authUser: AuthUser | null) => {
         completed: false,
         status: "todo",
         assignedTo: newTaskData.assignedTo
-          ? String(newTaskData.assignedTo) 
+          ? String(newTaskData.assignedTo)
           : playerData?.id
           ? String(playerData.id)
           : null,
@@ -433,160 +434,40 @@ export const useGameData = (authUser: AuthUser | null) => {
     [updatePlayerData]
   );
 
-  const completeTask = useCallback(
-    (taskId: string) => {
-      let taskCompletedXp = 0;
-      let taskCompletedCredits = 0;
-      let taskTitleForNotification = "";
-
-      updatePlayerData((prevPlayerData: PlayerData) => {
-        let taskThatWasCompleted: PlayerTask | undefined;
-        const originalLevel = prevPlayerData.level;
-        let madeChanges = false;
-
-        const newTasks = prevPlayerData.tasks.map((t) => {
-          if (t.id === taskId && !t.completed) {
-            madeChanges = true;
-            taskThatWasCompleted = {
-              ...t,
-              completed: true,
-              completedAt: new Date().toISOString(),
-              status: "done",
-            };
-            taskCompletedXp = taskThatWasCompleted.xp;
-            taskCompletedCredits =
-              taskThatWasCompleted.credits ||
-              Math.floor(taskThatWasCompleted.xp / 5);
-            taskTitleForNotification = taskThatWasCompleted.title;
-            return taskThatWasCompleted;
-          }
-          return t;
-        });
-
-        if (!madeChanges || !taskThatWasCompleted) {
+  const consumePowerUp = useCallback(
+    (powerUpValue: string) => {
+      updatePlayerData((prev) => {
+        if (
+          !prev.activePowerUps ||
+          !prev.activePowerUps[powerUpValue]?.active
+        ) {
           return {};
         }
 
-        let newXp = prevPlayerData.xp + taskCompletedXp;
-        let newCredits = prevPlayerData.credits + taskCompletedCredits;
-        let newLevel = prevPlayerData.level;
-        let leveledUp = false;
+        const powerUp = prev.activePowerUps[powerUpValue];
+        let usesLeft = powerUp.usesLeft;
+        let isActive = powerUp.active;
 
-        while (
-          newLevel < XP_PER_LEVEL.length - 1 &&
-          newXp >= XP_PER_LEVEL[newLevel]
-        ) {
-          newLevel++;
-          leveledUp = true;
-        }
-
-        const updatedMissions = prevPlayerData.missions.map((mission) => {
-          let currentProgress = mission.currentProgress;
-          if (
-            !mission.isClaimed &&
-            currentProgress < mission.target &&
-            (mission.type === "once" ||
-              mission.type === "weekly" ||
-              mission.type === "daily")
-          ) {
-            currentProgress++;
-          }
-          return { ...mission, currentProgress };
-        });
-
-        const newEarnedBadgeIds = [...prevPlayerData.earnedBadgeIds];
-
-        if (leveledUp) {
-          window.showGlobalNotification?.({
-            type: "quest",
-            title: "Promotion!",
-            message: `Reached Command Level ${newLevel}! New perks unlocked.`,
-            icon: FaUserShield,
-          });
-        }
-        updatedMissions.forEach((mission) => {
-          if (
-            mission.currentProgress >= mission.target &&
-            !mission.isClaimed &&
-            prevPlayerData.missions.find(
-              (pm) => pm.id === mission.id && pm.currentProgress < pm.target
-            )
-          ) {
+        if (usesLeft !== undefined) {
+          usesLeft--;
+          if (usesLeft <= 0) {
+            isActive = false;
+            const item = SHOP_ITEMS_CONFIG.find(
+              (i) => i.value === powerUpValue
+            );
             window.showGlobalNotification?.({
-              type: "quest",
-              title: "Constellation Objective Met!",
-              message: `"${mission.title}" ready for debrief. Claim your reward!`,
-              icon: iconMap["FaRocket"] || FaRocket,
+              type: "info",
+              title: "Power-up Depleted",
+              message: `Efek dari "${item?.name || powerUpValue}" telah habis.`,
+              icon: FaFlask,
             });
           }
-        });
-        ALL_BADGES_CONFIG.forEach((badgeConfig) => {
-          if (!prevPlayerData.earnedBadgeIds.includes(badgeConfig.id)) {
-            let conditionMet = false;
-            const totalTasksNowCompleted =
-              prevPlayerData.stats.tasksCompleted + 1;
-            if (
-              badgeConfig.id === "b_first_mission" &&
-              totalTasksNowCompleted === 1
-            )
-              conditionMet = true;
-            if (
-              badgeConfig.id === "b_explorer_initiate" &&
-              totalTasksNowCompleted >= 3
-            )
-              conditionMet = true;
-            if (
-              badgeConfig.id === "b_diligent_commander" &&
-              totalTasksNowCompleted >= 10
-            )
-              conditionMet = true;
-            if (
-              badgeConfig.id === "b_level_5_cadet" &&
-              newLevel >= 5 &&
-              originalLevel < 5
-            )
-              conditionMet = true;
-            if (
-              badgeConfig.id === "b_credits_collector" &&
-              newCredits >= 500 &&
-              prevPlayerData.credits < 500
-            )
-              conditionMet = true;
-
-            if (conditionMet && !newEarnedBadgeIds.includes(badgeConfig.id)) {
-              newEarnedBadgeIds.push(badgeConfig.id);
-              window.showGlobalNotification?.({
-                type: "success",
-                title: "Commendation Earned!",
-                message: `New insignia: ${badgeConfig.name}`,
-                icon: badgeConfig.icon || FaAward,
-              });
-            }
-          }
-        });
-
-        if (taskTitleForNotification) {
-          window.showGlobalNotification?.({
-            type: "success",
-            title: "Objective Cleared!",
-            message: `+${taskCompletedXp} XP & +${taskCompletedCredits} CP for "${taskTitleForNotification}".`,
-            icon: FaCheckCircle,
-          });
         }
 
         return {
-          tasks: newTasks,
-          xp: newXp,
-          credits: newCredits,
-          level: newLevel,
-          missions: updatedMissions,
-          earnedBadgeIds: newEarnedBadgeIds,
-          stats: {
-            ...prevPlayerData.stats,
-            tasksCompleted: prevPlayerData.stats.tasksCompleted + 1,
-            totalXpEarned: prevPlayerData.stats.totalXpEarned + taskCompletedXp,
-            totalCreditsEarned:
-              prevPlayerData.stats.totalCreditsEarned + taskCompletedCredits,
+          activePowerUps: {
+            ...prev.activePowerUps,
+            [powerUpValue]: { ...powerUp, active: isActive, usesLeft },
           },
         };
       });
@@ -594,6 +475,197 @@ export const useGameData = (authUser: AuthUser | null) => {
     [updatePlayerData]
   );
 
+  const completeTask = useCallback(
+    (taskId: string) => {
+      let currentPlayerData: PlayerData | null = null;
+      setPlayerData((prev) => {
+        currentPlayerData = prev;
+        return prev;
+      });
+
+      setTimeout(() => {
+        if (!currentPlayerData) return;
+
+        let taskThatWasCompleted: PlayerTask | undefined;
+        let xpBoostMultiplier = 1;
+        let activePowerUpValue: string | null = null;
+
+        if (currentPlayerData.activePowerUps) {
+          const boost = Object.entries(currentPlayerData.activePowerUps).find(
+            ([key, value]) => key.includes("xp_boost") && value.active
+          );
+          if (boost) {
+            xpBoostMultiplier = 2;
+            activePowerUpValue = boost[0];
+          }
+        }
+        updatePlayerData((prev: PlayerData) => {
+          const originalLevel = prev.level;
+          let madeChanges = false;
+          let taskTitleForNotification = "";
+          let taskCompletedXp = 0;
+          let taskCompletedCredits = 0;
+
+          const newTasks = prev.tasks.map((t) => {
+            if (t.id === taskId && !t.completed) {
+              madeChanges = true;
+              taskThatWasCompleted = {
+                ...t,
+                completed: true,
+                completedAt: new Date().toISOString(),
+                status: "done",
+              };
+
+              taskCompletedXp = taskThatWasCompleted.xp * xpBoostMultiplier;
+
+              taskCompletedCredits =
+                taskThatWasCompleted.credits ||
+                Math.floor(taskThatWasCompleted.xp / 5);
+              taskTitleForNotification = taskThatWasCompleted.title;
+              return taskThatWasCompleted;
+            }
+            return t;
+          });
+
+          if (!madeChanges || !taskThatWasCompleted) {
+            return {};
+          }
+
+          if (activePowerUpValue) {
+            window.showGlobalNotification?.({
+              type: "quest",
+              title: "Hyper-Boost Active!",
+              message: `XP digandakan untuk "${taskTitleForNotification}"!`,
+              icon: FaBolt,
+            });
+          }
+
+          let newXp = prev.xp + taskCompletedXp;
+          let newCredits = prev.credits + taskCompletedCredits;
+          let newLevel = prev.level;
+          let leveledUp = false;
+
+          while (
+            newLevel < XP_PER_LEVEL.length - 1 &&
+            newXp >= XP_PER_LEVEL[newLevel]
+          ) {
+            newLevel++;
+            leveledUp = true;
+          }
+
+          const updatedMissions = prev.missions.map((mission) => {
+            let currentProgress = mission.currentProgress;
+            if (
+              !mission.isClaimed &&
+              currentProgress < mission.target &&
+              (mission.type === "once" ||
+                mission.type === "weekly" ||
+                mission.type === "daily")
+            ) {
+              currentProgress++;
+            }
+            if (
+              currentProgress >= mission.target &&
+              !mission.isClaimed &&
+              prev.missions.find(
+                (pm) => pm.id === mission.id && pm.currentProgress < pm.target
+              )
+            ) {
+              window.showGlobalNotification?.({
+                type: "quest",
+                title: "Constellation Objective Met!",
+                message: `"${mission.title}" ready for debrief. Claim your reward!`,
+                icon: FaRocket,
+              });
+            }
+            return { ...mission, currentProgress };
+          });
+
+          const newEarnedBadgeIds = [...prev.earnedBadgeIds];
+          ALL_BADGES_CONFIG.forEach((badgeConfig) => {
+            if (!prev.earnedBadgeIds.includes(badgeConfig.id)) {
+              let conditionMet = false;
+              const totalTasksNowCompleted = prev.stats.tasksCompleted + 1;
+              if (
+                badgeConfig.id === "b_first_mission" &&
+                totalTasksNowCompleted === 1
+              )
+                conditionMet = true;
+              if (
+                badgeConfig.id === "b_explorer_initiate" &&
+                totalTasksNowCompleted >= 3
+              )
+                conditionMet = true;
+              if (
+                badgeConfig.id === "b_diligent_commander" &&
+                totalTasksNowCompleted >= 10
+              )
+                conditionMet = true;
+              if (
+                badgeConfig.id === "b_level_5_cadet" &&
+                newLevel >= 5 &&
+                originalLevel < 5
+              )
+                conditionMet = true;
+              if (
+                badgeConfig.id === "b_credits_collector" &&
+                newCredits >= 500 &&
+                prev.credits < 500
+              )
+                conditionMet = true;
+
+              if (conditionMet && !newEarnedBadgeIds.includes(badgeConfig.id)) {
+                newEarnedBadgeIds.push(badgeConfig.id);
+                window.showGlobalNotification?.({
+                  type: "success",
+                  title: "Commendation Earned!",
+                  message: `New insignia: ${badgeConfig.name}`,
+                  icon: badgeConfig.icon || FaAward,
+                });
+              }
+            }
+          });
+
+          if (leveledUp) {
+            window.showGlobalNotification?.({
+              type: "quest",
+              title: "Promotion!",
+              message: `Reached Command Level ${newLevel}!`,
+              icon: FaUserShield,
+            });
+          }
+
+          window.showGlobalNotification?.({
+            type: "success",
+            title: "Objective Cleared!",
+            message: `+${taskCompletedXp} XP & +${taskCompletedCredits} CP for "${taskTitleForNotification}".`,
+            icon: FaCheckCircle,
+          });
+
+          return {
+            tasks: newTasks,
+            xp: newXp,
+            level: newLevel,
+            credits: newCredits,
+            missions: updatedMissions,
+            earnedBadgeIds: newEarnedBadgeIds,
+            stats: {
+              ...prev.stats,
+              tasksCompleted: prev.stats.tasksCompleted + 1,
+              totalXpEarned: prev.stats.totalXpEarned + taskCompletedXp,
+              totalCreditsEarned:
+                prev.stats.totalCreditsEarned + taskCompletedCredits,
+            },
+          };
+        });
+
+        if (activePowerUpValue) {
+          consumePowerUp(activePowerUpValue);
+        }
+      }, 50);
+    },
+    [setPlayerData, updatePlayerData, consumePowerUp]
+  );
   const getXpBoundaries = useCallback(() => {
     if (!playerData)
       return {
@@ -836,39 +908,6 @@ export const useGameData = (authUser: AuthUser | null) => {
     [updatePlayerData]
   );
 
-  const consumePowerUp = useCallback(
-    (powerUpValue: string) => {
-      updatePlayerData((prev) => {
-        if (!prev.activePowerUps || !prev.activePowerUps[powerUpValue]?.active)
-          return {};
-
-        const powerUp = prev.activePowerUps[powerUpValue];
-        let usesLeft = powerUp.usesLeft;
-        let isActive = powerUp.active;
-
-        if (usesLeft !== undefined) {
-          usesLeft--;
-          if (usesLeft <= 0) {
-            isActive = false;
-            window.showGlobalNotification?.({
-              type: "info",
-              title: "Power-up Depleted",
-              message: `Power-up ${powerUpValue} has been used up.`,
-            });
-          }
-        }
-
-        return {
-          activePowerUps: {
-            ...prev.activePowerUps,
-            [powerUpValue]: { ...powerUp, active: isActive, usesLeft },
-          },
-        };
-      });
-    },
-    [updatePlayerData]
-  );
-
   const updatePlayerProfile = useCallback(
     (newName: string, newAvatarUrl: string) => {
       updatePlayerData((prev: PlayerData) => {
@@ -1079,7 +1118,6 @@ export const useGameData = (authUser: AuthUser | null) => {
     },
     [updatePlayerData]
   );
-
 
   return {
     playerData,
