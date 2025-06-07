@@ -1,4 +1,3 @@
-// src/app/crew-projects/page.tsx
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,7 +17,6 @@ import InviteMemberModal, {
   NewMemberData,
 } from "@/components/InviteMemberModal";
 
-// Tipe untuk Proyek
 export interface ProjectMember {
   id: string;
   name: string;
@@ -93,7 +91,7 @@ export default function CrewProjectsPage() {
       ],
     }),
     []
-  ); // Tidak ada dependensi jika pd adalah argumen
+  );
 
   useEffect(() => {
     if (playerData && playerData.id && !authLoading && !isLoadingData) {
@@ -112,7 +110,6 @@ export default function CrewProjectsPage() {
           ) {
             setCurrentProjectId(parsedProjects[0].id);
           } else if (parsedProjects.length === 0) {
-            // Jika tidak ada proyek setelah parsing, buat default
             const defaultProject = createDefaultProject(playerData);
             setProjects([defaultProject]);
             setCurrentProjectId(defaultProject.id);
@@ -174,15 +171,13 @@ export default function CrewProjectsPage() {
   };
 
   const handleTaskSave = (
-    taskDataFromModal: Omit<PlayerTask, "id" | "completed" | "completedAt">, // Bisa mengandung 'status' dari modal
+    taskDataFromModal: Omit<PlayerTask, "id" | "completed" | "completedAt">,
     taskId?: string
   ) => {
     if (!currentProjectId || !selectedProject) return;
 
     const defaultStatusFromProject = selectedProject.columns[0]?.id || "todo";
 
-    // taskPayload akan memiliki semua field yang dibutuhkan PlayerTask kecuali id, completed, completedAt
-    // status akan diambil dari modal atau default dari kolom proyek
     const taskPayload: Partial<PlayerTask> = {
       title: taskDataFromModal.title,
       description: taskDataFromModal.description,
@@ -190,22 +185,16 @@ export default function CrewProjectsPage() {
       xp: taskDataFromModal.xp,
       credits: taskDataFromModal.credits,
       category: taskDataFromModal.category,
-      projectId: currentProjectId, // Selalu dari proyek saat ini
+      projectId: currentProjectId,
       status: taskDataFromModal.status || defaultStatusFromProject,
       assignedTo: taskDataFromModal.assignedTo || null,
     };
 
     if (taskId) {
-      // Editing
-      editTask(taskId, taskPayload); // editTask menerima Partial<PlayerTask>, jadi taskPayload oke
+      editTask(taskId, taskPayload);
     } else {
-      // Creating
-      // addTask di useGameData mengharapkan Omit<PlayerTask, 'id' | 'completed' | 'completedAt' | 'status'>
-      // Kita perlu membuat objek baru yang tidak menyertakan 'status', karena addTask akan menanganinya.
       const { status, id, completed, completedAt, ...payloadForAdd } =
-        taskPayload as PlayerTask; // Cast ke PlayerTask untuk destructure semua field yang tidak diinginkan oleh Omit
-
-      // payloadForAdd sekarang memiliki tipe yang cocok dengan parameter newTaskData di addTask
+        taskPayload as PlayerTask;
       addTask(payloadForAdd);
     }
     setIsTaskModalOpen(false);
@@ -258,7 +247,6 @@ export default function CrewProjectsPage() {
   const handleDragEnd = (e: DragEvent<HTMLDivElement>) => {
     setDraggedTaskId(null);
     if (dragOverColumnId) {
-      // Hanya reset jika ada kolom yang di-highlight
       document
         .querySelector(`.kanban-column[data-column-id="${dragOverColumnId}"]`)
         ?.classList.remove("drag-over-column-highlight");
@@ -270,15 +258,12 @@ export default function CrewProjectsPage() {
   const handleDragOver = (e: DragEvent<HTMLDivElement>, columnId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    // Tidak perlu setDragOverColumnId di sini, cukup di handleDragEnter
   };
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>, columnId: string) => {
     e.preventDefault();
     if (columnId !== dragOverColumnId) {
-      // Optimasi: hanya ubah jika kolom berbeda
       if (dragOverColumnId) {
-        // Hapus highlight dari kolom sebelumnya
         document
           .querySelector(`.kanban-column[data-column-id="${dragOverColumnId}"]`)
           ?.classList.remove("drag-over-column-highlight");
@@ -291,7 +276,6 @@ export default function CrewProjectsPage() {
   };
 
   const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    // Hanya menerima event 'e'
     const kanbanColumn = e.currentTarget.closest(".kanban-column");
     if (kanbanColumn && !kanbanColumn.contains(e.relatedTarget as Node)) {
       if (dragOverColumnId === kanbanColumn.getAttribute("data-column-id")) {
@@ -333,11 +317,9 @@ export default function CrewProjectsPage() {
         targetColumnId !== doneColumn.id;
 
       if (isMovingToDone && !taskToMove.completed) {
-        completeTask(taskId); // Ini akan memicu notifikasi dari useGameData
+        completeTask(taskId);
       } else if (isMovingFromDone && taskToMove.completed) {
-        // Jika membatalkan penyelesaian tugas, mungkin perlu fungsi 'uncompleteTask' di useGameData
-        // Untuk sekarang, kita hanya mengubah statusnya, tapi notifikasi penyelesaian sebelumnya mungkin sudah muncul
-        editTask(taskId, { completed: false, completedAt: undefined }); // Tandai sebagai belum selesai
+        editTask(taskId, { completed: false, completedAt: undefined });
         window.showGlobalNotification?.({
           type: "info",
           title: "Objective Reactivated",
@@ -357,7 +339,7 @@ export default function CrewProjectsPage() {
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "Flexible ETA";
+    if (!dateString) return "Flexible";
     try {
       const date = new Date(dateString);
       if (!dateString.includes("T")) {
@@ -446,7 +428,7 @@ export default function CrewProjectsPage() {
                   const newProject = createDefaultProject(playerData);
                   const projectCount = projects.length + 1;
                   newProject.name = `Expedition #${projectCount}`;
-                  newProject.id = `proj-${Date.now()}`; // Pastikan ID unik
+                  newProject.id = `proj-${Date.now()}`;
                   setProjects((prev) => [...prev, newProject]);
                   setCurrentProjectId(newProject.id);
                   window.showGlobalNotification?.({
@@ -475,14 +457,14 @@ export default function CrewProjectsPage() {
                 }
                 setIsInviteModalOpen(true);
               }}
-              className="btn btn-secondary text-sm"
+              className="btn btn-primary text-sm flex items-center"
               disabled={!currentProjectId}
             >
               <FaUsers className="mr-2" /> Manage Crew
             </button>
             <button
               onClick={openCreateTaskModalForProject}
-              className="btn btn-primary text-sm"
+              className="btn btn-primary text-sm flex items-center"
               disabled={!currentProjectId}
             >
               <FaPlus className="mr-2" /> Add Objective
@@ -501,7 +483,7 @@ export default function CrewProjectsPage() {
             {selectedProject.columns.map((column) => (
               <div
                 key={column.id}
-                data-column-id={column.id} // Tambahkan data-column-id untuk selektor CSS yang lebih mudah
+                data-column-id={column.id}
                 className={`kanban-column bg-gray-800/70 border-gray-700/80 p-3 rounded-lg transition-all duration-200 ${
                   dragOverColumnId === column.id
                     ? "drag-over-column-highlight"
@@ -548,8 +530,8 @@ export default function CrewProjectsPage() {
                         )}
                         <p className="task-meta text-gray-500 text-xs">
                           {task.dueDate
-                            ? `ETA: ${formatDate(task.dueDate)}`
-                            : "Flexible ETA"}
+                            ? `Due: ${formatDate(task.dueDate)}`
+                            : "Flexible"}
                         </p>
                         <div className="mt-2 flex items-center justify-between">
                           <span className="text-xs text-purple-400 font-semibold">

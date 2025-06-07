@@ -23,7 +23,7 @@ const navItems = [
   { href: "/achievements", icon: FaShieldAlt, label: "Medal Bay" },
   { href: "/leaderboard", icon: FaCrown, label: "Hall of Fame" },
   { href: "/starmarket", icon: FaStore, label: "Star Market" },
-  // { href: "/starmap", icon: FaCalendarAlt, label: "Star Map (Calendar)" }, // Placeholder
+  // { href: "/starmap", icon: FaCalendarAlt, label: "Star Map (Calendar)" }, 
   { href: "/ship-settings", icon: FaCog, label: "Ship Systems" },
 ];
 

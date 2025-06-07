@@ -112,9 +112,18 @@ const AppHeader = () => {
             <img
               src={playerData.avatarUrl}
               alt="Commander Avatar"
-              className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-indigo-500 object-cover ${
-                playerData.avatarFrameId ? "avatar-frame-active" : ""
-              }`}
+              className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-indigo-500 object-cover 
+             ${
+               playerData.avatarFrameId === "gold-commander-frame"
+                 ? "avatar-frame-active gold-commander-frame-style"
+                 : ""
+             }
+             ${
+               playerData.avatarFrameId === "nova-burst-frame"
+                 ? "avatar-frame-active nova-burst-frame-style"
+                 : ""
+             }
+             `}
             />
             <div className="flex-grow min-w-[100px] sm:min-w-[120px]">
               {" "}

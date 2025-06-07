@@ -1,9 +1,9 @@
 "use client";
 
-import { Inter } from "next/font/google"; // Pastikan 'Inter' diimpor dengan benar
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { useGameData, PlayerData } from "@/hooks/useGameData"; // Impor PlayerData jika belum
+import { useGameData } from "@/hooks/useGameData";
 import Sidebar from "@/components/SideBar";
 import AppHeader from "@/components/AppHeader";
 import GlobalNotification, {
@@ -28,12 +28,10 @@ function AppBody({ children }: AppBodyProps) {
   const { playerData, isLoadingData: isGameDataLoading } = useGameData(user);
 
   useEffect(() => {
-    // Apply dynamic theme only after client-side data is loaded and available
     if (!isGameDataLoading && playerData) {
-      const themeToApply = playerData.activeTheme || "theme-dark"; // Default theme
+      const themeToApply = playerData.activeTheme || "theme-dark";
       const body = document.body;
 
-      // Remove previous theme-related classes carefully, preserving font class
       const currentClasses = Array.from(body.classList);
       const themeClassesToRemove: string[] = [];
 
@@ -46,7 +44,6 @@ function AppBody({ children }: AppBodyProps) {
           cls === "text-gray-800"
         ) {
           if (cls !== inter.className) {
-            // Ensure font class is not removed
             themeClassesToRemove.push(cls);
           }
         }
@@ -56,17 +53,14 @@ function AppBody({ children }: AppBodyProps) {
         body.classList.remove(...themeClassesToRemove);
       }
 
-      // Add new theme and its base styling classes
       body.classList.add(themeToApply);
-      // Apply base background and text colors based on the new theme
-      // This assumes 'theme-dark' and 'theme-default' are dark, others are light. Adjust as needed.
       if (themeToApply.includes("dark") || themeToApply === "theme-default") {
         body.classList.add("bg-gray-900", "text-gray-100");
       } else {
         body.classList.add("bg-gray-100", "text-gray-800");
       }
     }
-  }, [playerData, isGameDataLoading]); // Dependencies for the effect
+  }, [playerData, isGameDataLoading]); 
 
   return <>{children}</>;
 }
@@ -86,7 +80,6 @@ export default function RootLayout({
     ) => {
       setNotification({ ...detail, id: `notif-${Date.now()}` });
     };
-    // No cleanup needed for window.showGlobalNotification as RootLayout persists
   }, []);
 
   const handleDismissNotification = () => {
@@ -94,13 +87,11 @@ export default function RootLayout({
   };
 
   useEffect(() => {
-    // Set a default title if needed, dynamic titles per page are better handled by Next.js metadata API
     document.title = "SpaceQuest";
   }, []);
 
   return (
     <html lang="en">
-      {/* Ensure no extraneous whitespace within the <head> tag or between its children */}
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -111,7 +102,6 @@ export default function RootLayout({
         />
         <link rel="icon" href="/favicon.ico" />
       </head>
-      {/* Initial body classes for server render and first client paint, matching a default theme */}
       <body
         className={`${inter.className} theme-dark bg-gray-900 text-gray-100`}
       >

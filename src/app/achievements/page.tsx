@@ -1,4 +1,3 @@
-// src/app/achievements/page.tsx
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
