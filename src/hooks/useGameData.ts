@@ -20,6 +20,7 @@ import {
   FaStar,
   FaPalette,
   FaRedo,
+  FaTrophy,
 } from "react-icons/fa";
 
 export interface PlayerTask {
@@ -378,21 +379,20 @@ export const useGameData = (authUser: AuthUser | null) => {
       newTaskData: Omit<
         PlayerTask,
         "id" | "completed" | "completedAt" | "status"
-      > // Mengharapkan 'status' TIDAK ADA di newTaskData
+      > 
     ) => {
       const taskToAdd: PlayerTask = {
-        ...newTaskData, // Termasuk title, description, xp, credits, category, projectId, assignedTo (jika ada)
+        ...newTaskData,
         id: `task-<span class="math-inline">\{Date\.now\(\)\}\-</span>{Math.random().toString(36).substr(2, 9)}`,
         completed: false,
-        status: "todo", // addTask mengatur status default di sini
+        status: "todo",
         assignedTo: newTaskData.assignedTo
-          ? String(newTaskData.assignedTo) // Pastikan string jika ada
+          ? String(newTaskData.assignedTo) 
           : playerData?.id
           ? String(playerData.id)
-          : null, // Default ke ID pemain saat ini (string) atau null
+          : null,
       };
       updatePlayerData((prevPlayerData: PlayerData) => {
-        // prevPlayerData dijamin non-null
         return { tasks: [taskToAdd, ...(prevPlayerData.tasks || [])] };
       });
       window.showGlobalNotification?.({
@@ -857,7 +857,6 @@ export const useGameData = (authUser: AuthUser | null) => {
             });
           }
         }
-        // Jika power-up berbasis waktu, logika berbeda
 
         return {
           activePowerUps: {
@@ -993,6 +992,95 @@ export const useGameData = (authUser: AuthUser | null) => {
     }
   }, [authUser, setPlayerData]);
 
+  const claimMissionReward = useCallback(
+    (missionId: string) => {
+      updatePlayerData((prev: PlayerData) => {
+        const mission = prev.missions.find((m) => m.id === missionId);
+
+        if (
+          !mission ||
+          mission.currentProgress < mission.target ||
+          mission.isClaimed
+        ) {
+          window.showGlobalNotification?.({
+            type: "error",
+            title: "Claim Failed",
+            message: mission?.isClaimed
+              ? "Reward for this objective has already been claimed."
+              : "Objective not yet completed.",
+          });
+          return {};
+        }
+
+        const rewardXp = mission.rewardXp || 0;
+        const rewardCredits = mission.rewardCredits || 0;
+        const rewardBadgeId = mission.rewardBadgeId;
+
+        let newXp = prev.xp + rewardXp;
+        let newCredits = prev.credits + rewardCredits;
+        let newEarnedBadgeIds = [...prev.earnedBadgeIds];
+        let newLevel = prev.level;
+        let leveledUp = false;
+
+        while (
+          newLevel < XP_PER_LEVEL.length - 1 &&
+          newXp >= XP_PER_LEVEL[newLevel]
+        ) {
+          newLevel++;
+          leveledUp = true;
+        }
+
+        if (rewardBadgeId && !newEarnedBadgeIds.includes(rewardBadgeId)) {
+          newEarnedBadgeIds.push(rewardBadgeId);
+          const badge = ALL_BADGES_CONFIG.find((b) => b.id === rewardBadgeId);
+          if (badge) {
+            window.showGlobalNotification?.({
+              type: "success",
+              title: "Commendation Earned!",
+              message: `New insignia acquired: ${badge.name}`,
+              icon: badge.icon,
+            });
+          }
+        }
+
+        window.showGlobalNotification?.({
+          type: "success",
+          title: "Reward Claimed!",
+          message: `+${rewardXp} XP & +${rewardCredits} CP for completing "${mission.title}"!`,
+          icon: FaTrophy,
+        });
+
+        if (leveledUp) {
+          window.showGlobalNotification?.({
+            type: "quest",
+            title: "Promotion!",
+            message: `Your reward propelled you to Level ${newLevel}!`,
+            icon: FaUserShield,
+          });
+        }
+
+        const updatedMissions = prev.missions.map((m) =>
+          m.id === missionId ? { ...m, isClaimed: true } : m
+        );
+
+        return {
+          xp: newXp,
+          credits: newCredits,
+          level: newLevel,
+          missions: updatedMissions,
+          earnedBadgeIds: newEarnedBadgeIds,
+          stats: {
+            ...prev.stats,
+            totalXpEarned: prev.stats.totalXpEarned + rewardXp,
+            totalCreditsEarned: prev.stats.totalCreditsEarned + rewardCredits,
+          },
+        };
+      });
+    },
+    [updatePlayerData]
+  );
+
+
   return {
     playerData,
     isLoadingData,
@@ -1008,5 +1096,6 @@ export const useGameData = (authUser: AuthUser | null) => {
     applyTheme,
     applyAvatarFrame,
     resetGameData,
+    claimMissionReward,
   };
 };

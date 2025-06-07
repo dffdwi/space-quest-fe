@@ -11,6 +11,7 @@ import {
   FaBookOpen,
   FaCheckCircle,
   FaAward,
+  FaTrophy,
 } from "react-icons/fa";
 import {
   useGameData,
@@ -30,6 +31,7 @@ export default function DashboardPage() {
     addTask,
     editTask,
     updatePlayerData,
+    claimMissionReward,
   } = useGameData(user);
   const router = useRouter();
 
@@ -60,19 +62,8 @@ export default function DashboardPage() {
     setIsTaskModalOpen(false);
   };
 
-  if (authLoading || isLoadingData || !playerData) {
-    return (
-      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
-        <FaRocket className="text-5xl text-indigo-400 animate-pulse" />
-        <p className="ml-3 text-xl text-gray-300">
-          Loading Starship Systems...
-        </p>
-      </div>
-    );
-  }
-
   const handleClaimDailyDiscovery = () => {
-    if (!playerData.dailyDiscovery.available) {
+    if (!playerData?.dailyDiscovery.available) {
       window.showGlobalNotification?.({
         type: "info",
         title: "Already Claimed",
@@ -119,6 +110,17 @@ export default function DashboardPage() {
     });
   };
 
+  if (authLoading || isLoadingData || !playerData) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <FaRocket className="text-5xl text-indigo-400 animate-pulse" />
+        <p className="ml-3 text-xl text-gray-300">
+          Loading Starship Systems...
+        </p>
+      </div>
+    );
+  }
+
   const tasksToday = playerData.tasks
     .filter(
       (t) =>
@@ -127,7 +129,6 @@ export default function DashboardPage() {
         !t.projectId
     )
     .slice(0, 3);
-
   const getRandomSpaceTip = () => {
     const tips = [
       "A clean cockpit is a productive cockpit.",
@@ -204,26 +205,45 @@ export default function DashboardPage() {
 
       <section className="card p-5 md:p-6">
         <h2 className="text-xl font-semibold text-gray-100 mb-4">
-          🌌 Active Constellations (Quests)
+          🌌 Active & Completed Constellations (Quests)
         </h2>
         <div className="space-y-4">
-          {playerData.missions.filter(
-            (m) => !m.isClaimed && m.currentProgress < m.target
-          ).length > 0 ? (
-            playerData.missions
-              .filter((m) => !m.isClaimed && m.currentProgress < m.target)
-              .map((mission) => (
+          {playerData.missions.length > 0 ? (
+            playerData.missions.map((mission) => {
+              const isCompleted = mission.currentProgress >= mission.target;
+              const isClaimed = mission.isClaimed || false;
+
+              return (
                 <div
                   key={mission.id}
-                  className="bg-gradient-to-br from-gray-700 via-gray-800 to-indigo-900 border border-indigo-700 p-4 rounded-lg shadow-sm"
+                  className={`p-4 rounded-lg shadow-sm transition-opacity ${
+                    isClaimed
+                      ? "bg-gray-700/50 opacity-60"
+                      : "bg-gradient-to-br from-gray-700 via-gray-800 to-indigo-900 border border-indigo-700"
+                  }`}
                 >
-                  <div className="flex items-center mb-2">
-                    <FaBookOpen className="text-indigo-400 mr-3 text-xl" />
-                    <h3 className="font-semibold text-indigo-300 text-lg">
-                      {mission.title}
-                    </h3>
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center mb-2">
+                      <FaBookOpen className="text-indigo-400 mr-3 text-xl" />
+                      <h3
+                        className={`font-semibold text-lg ${
+                          isClaimed ? "text-gray-400" : "text-indigo-300"
+                        }`}
+                      >
+                        {mission.title}
+                      </h3>
+                    </div>
+                    {isClaimed && (
+                      <span className="text-xs font-bold text-green-400 bg-green-900/50 px-2 py-1 rounded-full flex items-center">
+                        <FaCheckCircle className="mr-1.5" /> CLAIMED
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-300 mb-3">
+                  <p
+                    className={`text-sm mb-3 ${
+                      isClaimed ? "text-gray-500" : "text-gray-300"
+                    }`}
+                  >
                     {mission.description}
                   </p>
                   <div className="w-full h-2.5 bg-gray-600 rounded-full mb-1 overflow-hidden">
@@ -237,23 +257,26 @@ export default function DashboardPage() {
                       }}
                     ></div>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center mt-2">
                     <span className="text-xs text-gray-400 font-medium">
                       {mission.currentProgress}/{mission.target} Complete
                     </span>
-                    {mission.currentProgress >= mission.target && (
-                      <span className="text-xs text-green-400 font-bold flex items-center">
-                        <FaCheckCircle className="mr-1" />
-                        Ready to Claim!
-                      </span>
+
+                    {isCompleted && !isClaimed && (
+                      <button
+                        onClick={() => claimMissionReward(mission.id)}
+                        className="btn btn-warning text-xs !py-1 !px-3 animate-pulse"
+                      >
+                        <FaTrophy className="mr-1.5" /> Claim Reward
+                      </button>
                     )}
                   </div>
                 </div>
-              ))
+              );
+            })
           ) : (
             <p className="text-sm text-gray-400 italic text-center py-3">
-              No active constellations to track. All objectives met or new
-              adventures await!
+              No active constellations to track. New adventures await!
             </p>
           )}
         </div>
