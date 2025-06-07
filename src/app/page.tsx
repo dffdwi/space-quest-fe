@@ -7,129 +7,124 @@ import {
   FaPlus,
   FaRocket,
   FaLightbulb,
-  FaExclamationTriangle,
   FaGift,
   FaBookOpen,
   FaCheckCircle,
+  FaAward,
 } from "react-icons/fa";
-
-interface Task {
-  id: string;
-  title: string;
-  project?: string;
-  dueDate?: string;
-  xp: number;
-  completed: boolean;
-  assignedTo?: string | null;
-}
-interface Mission {
-  id: string;
-  title: string;
-  description: string;
-  currentProgress: number;
-  target: number;
-}
-interface Badge {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ElementType;
-  color: string;
-}
-
-const initialGameState = {
-  tasks: [
-    {
-      id: "task1",
-      title: "Calibrate Starship Sensors",
-      dueDate: new Date().toISOString().split("T")[0],
-      project: "Daily Check",
-      xp: 25,
-      completed: false,
-      assignedTo: "currentUser",
-    },
-    {
-      id: "task2",
-      title: "Chart Nebula Cluster X-17",
-      project: "Exploration",
-      xp: 50,
-      completed: false,
-      assignedTo: "currentUser",
-    },
-  ],
-  missions: [
-    {
-      id: "m1",
-      title: "First Steps in Space",
-      description: "Complete 3 missions.",
-      currentProgress: 1,
-      target: 3,
-    },
-    {
-      id: "m2",
-      title: "Weekly Patrol",
-      description: "Complete 7 missions this week.",
-      currentProgress: 2,
-      target: 7,
-    },
-  ],
-  badges: [
-    {
-      id: "b1",
-      name: "First Mission Completed!",
-      description: "You completed your first mission.",
-      icon: FaRocket,
-      color: "text-green-400",
-    },
-  ],
-  dailyDiscoveryAvailable: true,
-  stats: {
-    tasksCompletedThisWeek: 5,
-    currentStreak: 3,
-    longestStreak: 7,
-  },
-};
+import {
+  useGameData,
+  PlayerTask,
+  ALL_BADGES_CONFIG,
+  XP_PER_LEVEL,
+} from "@/hooks/useGameData";
+import AddTaskModal from "@/components/AddTaskModal";
+import StatsChart from "@/components/StatsChart";
 
 export default function DashboardPage() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+  const {
+    playerData,
+    isLoadingData,
+    completeTask,
+    addTask,
+    editTask,
+    updatePlayerData,
+  } = useGameData(user);
   const router = useRouter();
-  const [gameData, setGameData] = useState(initialGameState);
+
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<PlayerTask | null>(null);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!authLoading && !user) {
       router.push("/login");
     }
-  }, [isLoading, user, router]);
+  }, [authLoading, user, router]);
 
-  if (isLoading || !user) {
+  const openCreateModal = () => {
+    setEditingTask(null);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleTaskSave = (
+    taskData: Omit<PlayerTask, "id" | "completed" | "completedAt">,
+    id?: string
+  ) => {
+    if (id) {
+      editTask(id, taskData);
+    } else {
+      const { status, ...rest } = taskData;
+      addTask({ ...rest, projectId: null });
+    }
+    setIsTaskModalOpen(false);
+  };
+
+  if (authLoading || isLoadingData || !playerData) {
     return (
-      <div className="flex justify-center items-center h-screen">
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
         <FaRocket className="text-5xl text-indigo-400 animate-pulse" />
-        <p className="ml-3 text-xl">Loading Starship Systems...</p>
+        <p className="ml-3 text-xl text-gray-300">
+          Loading Starship Systems...
+        </p>
       </div>
     );
   }
 
-  const handleCompleteTask = (taskId: string) => {
-    setGameData((prev) => ({
-      ...prev,
-      tasks: prev.tasks.map((t) =>
-        t.id === taskId ? { ...t, completed: !t.completed } : t
-      ),
-    }));
+  const handleClaimDailyDiscovery = () => {
+    if (!playerData.dailyDiscovery.available) {
+      window.showGlobalNotification?.({
+        type: "info",
+        title: "Already Claimed",
+        message: "Supply drop has already been claimed for today.",
+      });
+      return;
+    }
+    const rewardCredits = Math.floor(Math.random() * 20) + 10;
+    const rewardXp = Math.floor(Math.random() * 25) + 15;
+
+    updatePlayerData((prev) => {
+      if (!prev) return {};
+      const newCredits = prev.credits + rewardCredits;
+      const newXp = prev.xp + rewardXp;
+      let newLevel = prev.level;
+      while (
+        newLevel < XP_PER_LEVEL.length - 1 &&
+        newXp >= XP_PER_LEVEL[newLevel]
+      ) {
+        newLevel++;
+        window.showGlobalNotification?.({
+          type: "quest",
+          title: "Promotion!",
+          message: `Your daily discovery propelled you to Level ${newLevel}!`,
+        });
+      }
+
+      return {
+        credits: newCredits,
+        xp: newXp,
+        level: newLevel,
+        dailyDiscovery: {
+          ...prev.dailyDiscovery,
+          available: false,
+          lastClaimedDate: new Date().toISOString().split("T")[0],
+        },
+      };
+    });
+    window.showGlobalNotification?.({
+      type: "success",
+      title: "Supply Drop Acquired!",
+      message: `You found +${rewardCredits} CP and +${rewardXp} XP!`,
+      icon: FaGift,
+    });
   };
 
-  const claimDailyDiscovery = () => {
-    setGameData((prev) => ({ ...prev, dailyDiscoveryAvailable: false }));
-    alert("Daily discovery claimed! +10 CP (Cosmic Points) - Placeholder");
-  };
-
-  const tasksToday = gameData.tasks
+  const tasksToday = playerData.tasks
     .filter(
       (t) =>
         !t.completed &&
         t.dueDate === new Date().toISOString().split("T")[0] &&
-        t.assignedTo === "currentUser"
+        !t.projectId
     )
     .slice(0, 3);
 
@@ -144,6 +139,15 @@ export default function DashboardPage() {
     return tips[Math.floor(Math.random() * tips.length)];
   };
 
+  const latestBadgeId =
+    playerData.earnedBadgeIds.length > 0
+      ? playerData.earnedBadgeIds[playerData.earnedBadgeIds.length - 1]
+      : null;
+  const latestBadge = latestBadgeId
+    ? ALL_BADGES_CONFIG.find((b) => b.id === latestBadgeId)
+    : null;
+  const BadgeIcon = latestBadge?.icon || FaAward;
+
   return (
     <div className="space-y-6">
       <section className="card p-5 md:p-6">
@@ -152,8 +156,8 @@ export default function DashboardPage() {
             🚀 Today's Flight Plan (Personal)
           </h2>
           <button
-            onClick={() => alert("Open Add Mission Modal")}
-            className="btn btn-primary text-xs sm:text-sm flex items-center"
+            onClick={openCreateModal}
+            className="btn btn-primary text-xs sm:text-sm"
           >
             <FaPlus className="mr-1 sm:mr-2" /> Add Log Entry
           </button>
@@ -169,7 +173,7 @@ export default function DashboardPage() {
                   <input
                     type="checkbox"
                     checked={task.completed}
-                    onChange={() => handleCompleteTask(task.id)}
+                    onChange={() => completeTask(task.id)}
                     className="form-checkbox h-5 w-5 text-purple-400 rounded focus:ring-purple-500 focus:ring-offset-gray-800 mr-3 cursor-pointer bg-gray-800 border-gray-600"
                   />
                   <div>
@@ -181,7 +185,7 @@ export default function DashboardPage() {
                       {task.title}
                     </span>
                     <p className="text-xs text-gray-400">
-                      {task.project || "General Scan"} - Due: Today
+                      {task.category || "General Scan"} - Due: Today
                     </p>
                   </div>
                 </div>
@@ -203,72 +207,80 @@ export default function DashboardPage() {
           🌌 Active Constellations (Quests)
         </h2>
         <div className="space-y-4">
-          {gameData.missions.map((mission) => (
-            <div
-              key={mission.id}
-              className="bg-gradient-to-br from-gray-700 via-gray-800 to-indigo-900 border border-indigo-700 p-4 rounded-lg shadow-sm"
-            >
-              <div className="flex items-center mb-2">
-                <FaBookOpen className="text-indigo-400 mr-3 text-xl" />
-                <h3 className="font-semibold text-indigo-300 text-lg">
-                  {mission.title}
-                </h3>
-              </div>
-              <p className="text-sm text-gray-300 mb-3">
-                {mission.description}
-              </p>
-              <div className="w-full h-2.5 bg-gray-600 rounded-full mb-1 overflow-hidden">
+          {playerData.missions.filter(
+            (m) => !m.isClaimed && m.currentProgress < m.target
+          ).length > 0 ? (
+            playerData.missions
+              .filter((m) => !m.isClaimed && m.currentProgress < m.target)
+              .map((mission) => (
                 <div
-                  className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(
-                      100,
-                      (mission.currentProgress / mission.target) * 100
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-400 font-medium">
-                  {mission.currentProgress}/{mission.target} Complete
-                </span>
-                {mission.currentProgress >= mission.target && (
-                  <span className="text-xs text-green-400 font-bold flex items-center">
-                    <FaCheckCircle className="mr-1" />
-                    QUEST COMPLETE!
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
+                  key={mission.id}
+                  className="bg-gradient-to-br from-gray-700 via-gray-800 to-indigo-900 border border-indigo-700 p-4 rounded-lg shadow-sm"
+                >
+                  <div className="flex items-center mb-2">
+                    <FaBookOpen className="text-indigo-400 mr-3 text-xl" />
+                    <h3 className="font-semibold text-indigo-300 text-lg">
+                      {mission.title}
+                    </h3>
+                  </div>
+                  <p className="text-sm text-gray-300 mb-3">
+                    {mission.description}
+                  </p>
+                  <div className="w-full h-2.5 bg-gray-600 rounded-full mb-1 overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (mission.currentProgress / mission.target) * 100
+                        )}%`,
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-400 font-medium">
+                      {mission.currentProgress}/{mission.target} Complete
+                    </span>
+                    {mission.currentProgress >= mission.target && (
+                      <span className="text-xs text-green-400 font-bold flex items-center">
+                        <FaCheckCircle className="mr-1" />
+                        Ready to Claim!
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+          ) : (
+            <p className="text-sm text-gray-400 italic text-center py-3">
+              No active constellations to track. All objectives met or new
+              adventures await!
+            </p>
+          )}
         </div>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div
-          id="dailyDiscoveryElement"
-          onClick={
-            gameData.dailyDiscoveryAvailable ? claimDailyDiscovery : undefined
-          }
+          onClick={handleClaimDailyDiscovery}
           className={`daily-discovery card p-4 text-center ${
-            !gameData.dailyDiscoveryAvailable ? "claimed" : "hover:shadow-lg"
+            !playerData.dailyDiscovery.available ? "claimed" : "hover:shadow-lg"
           }`}
         >
           <FaGift
             className={`text-5xl mb-2 ${
-              gameData.dailyDiscoveryAvailable
+              playerData.dailyDiscovery.available
                 ? "text-purple-400 animate-bounce"
                 : "text-gray-600"
             }`}
           />
           <p
             className={`font-semibold text-sm ${
-              !gameData.dailyDiscoveryAvailable
+              !playerData.dailyDiscovery.available
                 ? "text-gray-500"
                 : "text-purple-300"
             }`}
           >
-            {gameData.dailyDiscoveryAvailable
+            {playerData.dailyDiscovery.available
               ? "Claim Daily Supply Drop!"
               : "Supply Drop Claimed"}
           </p>
@@ -278,20 +290,21 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold text-gray-100 mb-3">
             ✨ Recent Commendation
           </h2>
-          {gameData.badges.length > 0 ? (
+          {latestBadge ? (
             <div className="flex items-center p-3 bg-gray-700 rounded-lg border border-gray-600">
+              <BadgeIcon className={`${latestBadge.color} text-3xl mr-4`} />
               <div>
                 <p className="text-sm font-semibold text-gray-200">
-                  {gameData.badges[0].name}
+                  {latestBadge.name}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {gameData.badges[0].description}
+                  {latestBadge.description}
                 </p>
               </div>
             </div>
           ) : (
             <p className="text-sm text-gray-400 italic">
-              No new commendations.
+              No new commendations logged.
             </p>
           )}
         </div>
@@ -311,29 +324,40 @@ export default function DashboardPage() {
         </h2>
         <div>
           <p className="text-sm text-gray-300 mb-1">
-            Missions Logged (This Cycle):{" "}
+            Objectives Cleared (Total):{" "}
             <span className="font-bold text-indigo-400">
-              {gameData.stats.tasksCompletedThisWeek}
+              {playerData.stats.tasksCompleted}
             </span>
           </p>
           <p className="text-sm text-gray-300 mb-1">
-            Current Jump Streak:{" "}
+            Current Mission Streak:{" "}
             <span className="font-bold text-red-400">
-              {gameData.stats.currentStreak} Parsecs
+              {playerData.stats.currentMissionStreak} Cycles
             </span>{" "}
-            {gameData.stats.currentStreak > 0 ? "🔥" : ""}
+            {playerData.stats.currentMissionStreak > 0 ? "🔥" : ""}
           </p>
           <p className="text-sm text-gray-300 mb-1">
-            Longest Jump Streak:{" "}
+            Longest Mission Streak:{" "}
             <span className="font-bold text-red-400">
-              {gameData.stats.longestStreak} Parsecs
+              {playerData.stats.longestMissionStreak} Cycles
             </span>
           </p>
-          <div className="mt-4 h-32 bg-gray-700 rounded flex items-center justify-center">
-            <p className="text-gray-500">Performance Chart incoming...</p>
+
+          <div className="mt-4 h-64 md:h-72">
+            <StatsChart tasks={playerData.tasks} />
           </div>
         </div>
       </section>
+
+      {isTaskModalOpen && (
+        <AddTaskModal
+          isOpen={isTaskModalOpen}
+          onClose={() => setIsTaskModalOpen(false)}
+          onSave={handleTaskSave}
+          existingTask={editingTask}
+          projectId={null}
+        />
+      )}
     </div>
   );
 }
