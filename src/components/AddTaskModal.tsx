@@ -154,7 +154,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 htmlFor="taskDueDateModal"
                 className="block text-sm font-medium text-gray-300 mb-1"
               >
-                Due Date (Target ETA)
+                Due Date
               </label>
               <input
                 type="date"

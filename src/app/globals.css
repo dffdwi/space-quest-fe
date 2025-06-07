@@ -204,7 +204,7 @@ body {
 .theme-dark .xp-bar-container {
   background-color: #4b5563;
 }
-.theme-dark .task-item-bg, .theme-dark .kanban-task-card /* Dark theme for task items */ {
+.theme-dark .task-item-bg, .theme-dark .kanban-task-card {
   background-color: #4b5563;
 }
 .theme-dark .task-item-bg:hover,
@@ -280,13 +280,13 @@ body {
   display: flex;
   gap: 1rem;
   overflow-x: auto;
-  padding-bottom: 1rem; /* For scrollbar visibility */
+  padding-bottom: 1rem;
 }
 .kanban-column {
   min-width: 300px;
-  max-width: 350px; /* Optional: to prevent very wide columns */
+  max-width: 350px;
   flex: 1;
-  background-color: #e9ebee; /* Light gray for columns */
+  background-color: #e9ebee;
   border-radius: 0.5rem;
   padding: 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -302,10 +302,10 @@ body {
   border-bottom-color: #4b5563;
 }
 .kanban-tasks-container {
-  min-height: 100px; /* Minimum height for drop zone */
+  min-height: 100px;
   max-height: 60vh;
   overflow-y: auto;
-  padding-right: 0.5rem; /* Space for scrollbar */
+  padding-right: 0.5rem;
 }
 .kanban-task-card {
   background-color: white;
@@ -353,26 +353,21 @@ body {
   transform: rotate(3deg);
 }
 .drag-over-column {
-  background-color: #dbeafe; /* Light blue when dragging over */
+  background-color: #dbeafe;
 }
 .theme-dark .drag-over-column {
-  background-color: #25344e; /* Darker blue for dark theme */
+  background-color: #25344e;
 }
 .dragging-task {
   opacity: 0.6;
-  transform: rotate(2deg) scale(1.05);
+  transform: rotate(2deg) scale(0.9);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 .kanban-column.drag-over-column-highlight .kanban-tasks-container {
-  background-color: rgba(
-    79,
-    70,
-    229,
-    0.1
-  ); /* Warna highlight indigo transparan */
+  background-color: rgba(79, 70, 229, 0.1);
   border: 2px dashed #4f46e5;
-  border-radius: 0.375rem; /* Tailwind's rounded-md */
+  border-radius: 0.375rem;
 }
 
 .bg-gray-750 {
@@ -380,14 +375,13 @@ body {
 }
 
 .theme-nebula-dark {
-  --primary-bg: #0d0f18; /* Contoh warna */
+  --primary-bg: #0d0f18;
   --primary-text: #e0e7ff;
-  --accent-color: #7c3aed; /* Ungu nebula */
-  /* ... variabel CSS lain untuk tema ... */
+  --accent-color: #7c3aed;
   background-color: var(--primary-bg);
   color: var(--primary-text);
 }
 .theme-nebula-dark .card {
-  background-color: #171927; /* Sedikit lebih terang dari bg utama */
+  background-color: #171927;
   border-color: #2d3748;
 }

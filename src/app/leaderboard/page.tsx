@@ -1,19 +1,18 @@
-// src/app/leaderboard/page.tsx
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useGameData, PlayerData } from "@/hooks/useGameData"; // Pastikan PlayerData diekspor dari hook
+import { useGameData, PlayerData } from "@/hooks/useGameData";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { FaCrown, FaRocket, FaUserShield, FaMedal } from "react-icons/fa";
 
 interface LeaderboardEntry extends Partial<PlayerData> {
-  id: string; // ID bisa string atau number tergantung PlayerData Anda, pastikan konsisten
+  id: string;
   name: string;
   avatarUrl: string;
   level: number;
   xp: number;
-  rank?: number; // Akan dihitung
+  rank?: number;
 }
 
 const dummyLeaderboardData: Omit<LeaderboardEntry, "rank" | "id">[] = [
@@ -76,16 +75,14 @@ export default function LeaderboardPage() {
       xp: playerData.xp,
     };
 
-    // Gabungkan data dummy dengan data pengguna saat ini
     const combinedData: LeaderboardEntry[] = [
       ...dummyLeaderboardData.map((entry, index) => ({
         ...entry,
-        id: `dummy-${index}-${entry.name.replace(/\s+/g, "")}`, // Buat ID unik untuk dummy
+        id: `dummy-${index}-${entry.name.replace(/\s+/g, "")}`,
       })),
       currentUserEntry,
     ];
 
-    // Urutkan berdasarkan XP (tertinggi dulu), lalu level
     combinedData.sort((a, b) => {
       if (b.xp !== a.xp) {
         return b.xp - a.xp;
@@ -93,7 +90,6 @@ export default function LeaderboardPage() {
       return b.level - a.level;
     });
 
-    // Tambahkan peringkat
     return combinedData.map((entry, index) => ({
       ...entry,
       rank: index + 1,
@@ -112,7 +108,7 @@ export default function LeaderboardPage() {
   }
 
   const rankColors = ["text-amber-400", "text-slate-300", "text-yellow-600"];
-  const rankIcons = [FaCrown, FaMedal, FaMedal]; // Bisa juga FaAward atau ikon lain
+  const rankIcons = [FaCrown, FaMedal, FaMedal];
 
   return (
     <div className="space-y-6">

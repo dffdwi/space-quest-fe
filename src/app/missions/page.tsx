@@ -134,7 +134,7 @@ export default function Missions() {
           </h2>
           <button
             onClick={openCreateModal}
-            className="btn btn-primary w-full sm:w-auto"
+            className="btn btn-primary w-full sm:w-auto flex items-center"
           >
             <FaPlus className="mr-2" /> Add New Log Entry
           </button>

@@ -41,14 +41,13 @@ export default function StarMarketPage() {
     if (!playerData) return;
 
     if (item.type !== "power_up" && purchasedIds.has(item.id)) {
-      // Jika item sudah dimiliki dan bukan power-up, mungkin ingin terapkan jika itu tema atau frame
       if (item.type === "theme" && playerData.activeTheme !== item.value) {
-        purchaseShopItem(item.id); // Ini akan memanggil logika di useGameData untuk apply theme
+        purchaseShopItem(item.id);
       } else if (
         item.type === "avatar_frame" &&
         playerData.avatarFrameId !== item.value
       ) {
-        purchaseShopItem(item.id); // Ini akan memanggil logika di useGameData untuk apply frame
+        purchaseShopItem(item.id);
       } else {
         window.showGlobalNotification?.({
           type: "info",
@@ -130,8 +129,8 @@ export default function StarMarketPage() {
                       actionIcon = <FaCheck className="mr-2" />;
                     } else if (isPurchased) {
                       buttonText = "Apply";
-                      buttonClasses = "btn-secondary hover:bg-gray-600"; // Tombol untuk apply item yang sudah dibeli
-                      buttonDisabled = false; // Bisa di-apply
+                      buttonClasses = "btn-secondary hover:bg-gray-600";
+                      buttonDisabled = false;
                       actionIcon = <FaCheck className="mr-2" />;
                     } else if (isPowerUpActive) {
                       buttonText = "Active";
@@ -157,7 +156,7 @@ export default function StarMarketPage() {
                                         ? "opacity-70"
                                         : ""
                                     }
-                                    bg-gray-750 hover:shadow-indigo-500/30`} // Custom class
+                                    bg-gray-750 hover:shadow-indigo-500/30`} 
                       >
                         <div>
                           <div className="w-full h-36 bg-gray-800 rounded-md flex items-center justify-center mb-4 overflow-hidden">
@@ -178,8 +177,6 @@ export default function StarMarketPage() {
                             {item.name}
                           </h3>
                           <p className="text-xs text-gray-400 mb-3 h-10 overflow-hidden">
-                            {" "}
-                            {/* Fixed height for description */}
                             {item.description}
                           </p>
                         </div>
