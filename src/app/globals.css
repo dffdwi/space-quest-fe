@@ -204,7 +204,8 @@ body {
 .theme-dark .xp-bar-container {
   background-color: #4b5563;
 }
-.theme-dark .task-item-bg, .theme-dark .kanban-task-card {
+.theme-dark .task-item-bg,
+.theme-dark .kanban-task-card {
   background-color: #4b5563;
 }
 .theme-dark .task-item-bg:hover,
@@ -384,4 +385,107 @@ body {
 .theme-nebula-dark .card {
   background-color: #171927;
   border-color: #2d3748;
+}
+
+.fc-theme-dark .fc {
+  color: #d1d5db; /* Warna teks default */
+  background-color: transparent;
+}
+
+/* Header: Tombol Prev/Next, Today, dan Judul Bulan */
+.fc-theme-dark .fc-toolbar-title {
+  color: #e5e7eb;
+  font-size: 1.5rem; /* Perbesar judul */
+  font-weight: 700;
+}
+
+.fc-theme-dark .fc-button {
+  background-color: #374151; /* bg-gray-700 */
+  border: 1px solid #4b5563; /* border-gray-600 */
+  color: #e5e7eb;
+  transition: background-color 0.2s;
+  text-transform: capitalize;
+}
+
+.fc-theme-dark .fc-button:not(:disabled):hover {
+  background-color: #4f46e5; /* primary accent on hover */
+  border-color: #4f46e5;
+}
+
+.fc-theme-dark .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: #4338ca; /* primary accent active */
+  border-color: #4338ca;
+}
+
+.fc-theme-dark .fc-icon {
+  font-size: 1em; /* Ukuran ikon yang lebih baik */
+}
+
+/* Header Hari: Sun, Mon, Tue, etc. */
+.fc-theme-dark .fc-day-header {
+  background-color: rgba(31, 41, 55, 0.5);
+  border-bottom: 1px solid #374151;
+}
+
+.fc-theme-dark .fc-col-header-cell-cushion {
+  color: #9ca3af;
+  text-decoration: none;
+  font-size: 0.8rem;
+  padding: 8px 4px;
+}
+
+/* Grid Kalender */
+.fc-theme-dark .fc-daygrid-day {
+  border: 1px solid #374151; /* border-gray-700 */
+  transition: background-color 0.2s;
+}
+
+/* Hilangkan nomor hari di pojok atas */
+.fc-theme-dark .fc-daygrid-day-top {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.fc-theme-dark .fc-daygrid-day-number {
+  padding: 8px;
+  font-weight: 600;
+}
+
+/* Warna untuk hari ini */
+.fc-theme-dark .fc-day-today {
+  background-color: rgba(79, 70, 229, 0.15) !important; /* bg-indigo-900/15 */
+}
+.fc-theme-dark .fc-day-today .fc-daygrid-day-number {
+  color: #a5b4fc; /* Warna teks lebih cerah untuk hari ini */
+}
+
+/* Styling untuk event/tugas */
+.fc-event-custom {
+  border: none !important;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-weight: 500;
+  border-radius: 4px;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  transition: transform 0.15s ease;
+}
+
+.fc-event-custom:hover {
+  transform: scale(1.05);
+}
+
+.fc-event-completed {
+  background-color: #064e3b !important; /* bg-green-900 */
+  color: #a7f3d0 !important; /* text-green-300 */
+  opacity: 0.7;
+  text-decoration: line-through;
+}
+
+.fc-event-incomplete {
+  background-color: #4c1d95 !important; /* bg-violet-800 */
+  color: #c4b5fd !important; /* text-violet-300 */
 }
