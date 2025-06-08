@@ -16,6 +16,7 @@ interface AddTaskModalProps {
   projectId?: string | null;
   projectMembers?: ProjectMember[];
   projectColumns?: KanbanColumn[];
+  defaultDate?: string;
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({
@@ -26,10 +27,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   projectId,
   projectMembers = [],
   projectColumns = [],
+  defaultDate,
 }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [dueDate, setDueDate] = useState(defaultDate || "");
   const [xp, setXp] = useState(20);
   const [credits, setCredits] = useState(5);
   const [category, setCategory] = useState("");
@@ -63,7 +65,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         // Reset form untuk tugas baru
         setTitle("");
         setDescription("");
-        setDueDate("");
+        setDueDate(defaultDate || "");
         setXp(20);
         setCredits(5);
         setCategory("");
@@ -71,7 +73,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         setStatus(projectColumns.length > 0 ? projectColumns[0].id : "todo");
       }
     }
-  }, [existingTask, isOpen, projectId, projectColumns]);
+  }, [existingTask, isOpen, projectId, projectColumns, defaultDate]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
