@@ -23,6 +23,7 @@ import {
   FaTrophy,
   FaBolt,
 } from "react-icons/fa";
+import api from "@/lib/api";
 
 export interface PlayerTask {
   id: string;
@@ -131,7 +132,7 @@ const iconMap: { [key: string]: React.ElementType } = {
   FaAward: FaAward,
 };
 
-export const ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [
+export let ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [
   {
     id: "b_first_mission",
     name: "First Contact",
@@ -176,7 +177,7 @@ export const ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [
   },
 ];
 
-export const SHOP_ITEMS_CONFIG: ShopItem[] = [
+export let SHOP_ITEMS_CONFIG: ShopItem[] = [
   {
     id: "theme_nebula_dark",
     name: "Nebula Dark Theme",
@@ -293,64 +294,65 @@ export const useGameData = (authUser: AuthUser | null) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
-  const getLocalStorageKey = useCallback(() => {
-    return authUser ? `spaceQuestGameData_${String(authUser.id)}` : null;
-  }, [authUser]);
+  const fetchGameData = useCallback(async () => {
+    if (!authUser) return;
 
-  useEffect(() => {
-    const key = getLocalStorageKey();
-    if (!key) {
-      setIsLoadingData(false);
-      if (!authUser) setPlayerData(null);
-      return;
-    }
     setIsLoadingData(true);
     try {
-      const savedData = localStorage.getItem(key);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData) as PlayerData;
-        const template = initialPlayerDataTemplate(authUser);
-        setPlayerData({
-          ...template,
-          ...parsedData,
-          id: String(authUser!.id),
-          name:
-            authUser!.name || authUser!.email?.split("@")[0] || template.name,
-          avatarUrl: parsedData.avatarUrl || template.avatarUrl,
-          missions: template.missions.map((tm) => ({
-            ...tm,
-            ...(parsedData.missions?.find((pm) => pm.id === tm.id) || {}),
-          })),
-          dailyLogin: { ...template.dailyLogin, ...parsedData.dailyLogin },
-          dailyDiscovery: {
-            ...template.dailyDiscovery,
-            ...parsedData.dailyDiscovery,
-          },
-          stats: { ...template.stats, ...parsedData.stats },
-        });
-      } else if (authUser) {
-        setPlayerData(initialPlayerDataTemplate(authUser));
-      }
+      const [profileRes, tasksRes, missionsRes, gameConfigRes] =
+        await Promise.all([
+          api.get("/auth/profile"),
+          api.get("/tasks"),
+          api.get("/missions/my-progress"),
+          api.get("/game-config/all"),
+        ]);
+
+      const profile = profileRes.data;
+      const tasks = tasksRes.data;
+      const playerMissions = missionsRes.data;
+      const gameConfig = gameConfigRes.data;
+
+      ALL_BADGES_CONFIG = gameConfig.badges;
+      SHOP_ITEMS_CONFIG = gameConfig.shopItems;
+
+      const combinedData: PlayerData = {
+        id: profile.userId,
+        name: profile.name,
+        avatarUrl: profile.avatarUrl,
+        level: profile.level,
+        xp: profile.xp,
+        credits: profile.credits,
+        activeTheme: profile.activeTheme,
+        avatarFrameId: profile.activeAvatarFrameId,
+        dailyLogin: profile.dailyLogin,
+        dailyDiscovery: profile.dailyDiscovery,
+        stats: profile.stats,
+        tasks: tasks,
+        missions: playerMissions,
+        earnedBadgeIds: (profile.badges || []).map(
+          (b: { badgeId: string }) => b.badgeId
+        ),
+        purchasedShopItemIds: (profile.inventory || []).map(
+          (i: { itemId: string }) => i.itemId
+        ),
+      };
+
+      setPlayerData(combinedData);
     } catch (error) {
-      console.error("Failed to load game data:", error);
-      if (authUser) {
-        setPlayerData(initialPlayerDataTemplate(authUser));
-      }
+      console.error("Gagal mengambil data game dari server:", error);
     } finally {
       setIsLoadingData(false);
     }
-  }, [authUser, getLocalStorageKey]);
+  }, [authUser]);
 
   useEffect(() => {
-    const key = getLocalStorageKey();
-    if (key && playerData && !isLoadingData) {
-      try {
-        localStorage.setItem(key, JSON.stringify(playerData));
-      } catch (error) {
-        console.error("Failed to save game data:", error);
-      }
+    if (authUser) {
+      fetchGameData();
+    } else {
+      setPlayerData(null);
+      setIsLoadingData(false);
     }
-  }, [playerData, isLoadingData, getLocalStorageKey]);
+  }, [authUser, fetchGameData]);
 
   const updatePlayerData = useCallback(
     (
