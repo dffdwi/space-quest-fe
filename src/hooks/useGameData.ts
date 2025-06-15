@@ -64,13 +64,13 @@ export interface PlayerBadge {
 }
 
 export interface ShopItem {
-  id: string;
+  itemId: string;
   name: string;
   description: string;
   price: number;
   type: "theme" | "avatar_frame" | "power_up" | "cosmetic";
   value: string;
-  icon: React.ElementType;
+  icon?: string;
   category?: "Ship Customization" | "Commander Gear" | "Consumables";
   duration?: number;
 }
@@ -179,56 +179,56 @@ export let ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [
 
 export let SHOP_ITEMS_CONFIG: ShopItem[] = [
   {
-    id: "theme_nebula_dark",
+    itemId: "theme_nebula_dark",
     name: "Nebula Dark Theme",
     description:
       "Navigate the cosmos in a sleek, dark interface with vibrant nebula accents.",
     price: 250,
     type: "theme",
     value: "theme-nebula-dark",
-    icon: FaPalette,
+    icon: "FaPalette",
     category: "Ship Customization",
   },
   {
-    id: "theme_starfield_light",
+    itemId: "theme_starfield_light",
     name: "Starfield Light Theme",
     description:
       "A bright and clear interface, like gazing upon a field of distant stars.",
     price: 200,
     type: "theme",
     value: "theme-starfield-light",
-    icon: FaPalette,
+    icon: "FaPalette",
     category: "Ship Customization",
   },
   {
-    id: "avatar_frame_gold_commander",
+    itemId: "avatar_frame_gold_commander",
     name: "Gold Commander Frame",
     description: "A prestigious gold frame for your commander avatar.",
     price: 150,
     type: "avatar_frame",
     value: "gold-commander-frame",
-    icon: FaStar,
+    icon: "FaStar",
     category: "Commander Gear",
   },
   {
-    id: "avatar_frame_nova_burst",
+    itemId: "avatar_frame_nova_burst",
     name: "Nova Burst Frame",
     description: "An energetic frame resembling a stellar nova.",
     price: 120,
     type: "avatar_frame",
     value: "nova-burst-frame",
-    icon: FaStar,
+    icon: "FaStar",
     category: "Commander Gear",
   },
   {
-    id: "power_up_xp_boost_small",
+    itemId: "power_up_xp_boost_small",
     name: "XP Hyper-Boost (Small)",
     description:
       "Doubles XP gained from the next completed mission log. Single use.",
     price: 75,
     type: "power_up",
     value: "xp_boost_small_1use",
-    icon: FaFlask,
+    icon: "FaFlask",
     category: "Consumables",
     duration: 1,
   },
@@ -294,6 +294,9 @@ export const useGameData = (authUser: AuthUser | null) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
+  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
+  const [allBadges, setAllBadges] = useState<PlayerBadge[]>([]);
+
   const fetchGameData = useCallback(async () => {
     if (!authUser) return;
 
@@ -311,9 +314,6 @@ export const useGameData = (authUser: AuthUser | null) => {
       const tasks = tasksRes.data;
       const playerMissions = missionsRes.data;
       const gameConfig = gameConfigRes.data;
-
-      ALL_BADGES_CONFIG = gameConfig.badges;
-      SHOP_ITEMS_CONFIG = gameConfig.shopItems;
 
       const todayStr = new Date().toISOString().split("T")[0];
       const lastLoginStr = profile.lastLoginDate
@@ -352,6 +352,9 @@ export const useGameData = (authUser: AuthUser | null) => {
         },
         stats: profile.stats,
       };
+
+      setShopItems(gameConfig.shopItems);
+      setAllBadges(gameConfig.badges);
 
       setPlayerData(combinedData);
       console.log(combinedData);
@@ -720,109 +723,44 @@ export const useGameData = (authUser: AuthUser | null) => {
   }, [playerData, updatePlayerData]);
 
   const purchaseShopItem = useCallback(
-    (itemId: string) => {
-      const item = SHOP_ITEMS_CONFIG.find((i) => i.id === itemId);
-      if (!item) {
+    async (itemId: string) => {
+      if (!playerData) return;
+
+      const item = SHOP_ITEMS_CONFIG.find((i) => i.itemId === itemId);
+      if (!item) return;
+
+      if (playerData.credits < item.price) {
         window.showGlobalNotification?.({
           type: "error",
-          title: "Artifact Not Found",
-          message: "The requested item does not exist in the Star Market.",
+          title: "Insufficient Credits!",
+          message: `Not enough Cosmic Points for ${item.name}.`,
         });
-        return false;
+        return;
       }
 
-      updatePlayerData((prev: PlayerData): Partial<PlayerData> => {
-        if (prev.credits < item.price) {
-          window.showGlobalNotification?.({
-            type: "error",
-            title: "Insufficient Credits",
-            message: `You need ${item.price} CP for ${item.name}. You have ${prev.credits} CP.`,
-          });
-          return {};
-        }
+      try {
+        await api.post("/shop/purchase", { itemId });
 
-        if (
-          item.type !== "power_up" &&
-          prev.purchasedShopItemIds.includes(itemId)
-        ) {
-          window.showGlobalNotification?.({
-            type: "info",
-            title: "Already Acquired",
-            message: `You already own the artifact: ${item.name}.`,
-          });
-          return {};
-        }
-
-        if (
-          item.type === "power_up" &&
-          prev.activePowerUps?.[item.value]?.active
-        ) {
-          window.showGlobalNotification?.({
-            type: "warning",
-            title: "Power-up Active",
-            message: `${item.name} is already active or a similar boost is in effect.`,
-          });
-          return {};
-        }
-
-        const newCredits = prev.credits - item.price;
-        let newPurchasedShopItemIds = [...prev.purchasedShopItemIds];
-        let newActiveTheme = prev.activeTheme;
-        let newAvatarFrameId = prev.avatarFrameId;
-        let newActivePowerUps = { ...(prev.activePowerUps || {}) };
-
-        let notificationTitle = "Artifact Acquired!";
-        let notificationMessage = `You have successfully acquired ${item.name}!`;
-        let notificationIcon: React.ElementType = item.icon || FaGift;
-
-        if (item.type === "theme") {
-          newActiveTheme = item.value;
-          if (!newPurchasedShopItemIds.includes(itemId))
-            newPurchasedShopItemIds.push(itemId);
-          notificationMessage = `Ship's interface theme changed to ${item.name}.`;
-        } else if (item.type === "avatar_frame") {
-          newAvatarFrameId = item.value;
-          if (!newPurchasedShopItemIds.includes(itemId))
-            newPurchasedShopItemIds.push(itemId);
-          notificationMessage = `Commander avatar frame set to ${item.name}.`;
-        } else if (item.type === "power_up") {
-          newActivePowerUps[item.value] = {
-            active: true,
-            usesLeft: item.duration,
-          };
-          notificationTitle = "Power-up Activated!";
-          notificationMessage = `${item.name} is now active! (${
-            item.duration
-          } use${item.duration === 1 ? "" : "s"} left).`;
-        } else if (item.type === "cosmetic") {
-          if (!newPurchasedShopItemIds.includes(itemId))
-            newPurchasedShopItemIds.push(itemId);
-        }
+        fetchGameData();
 
         window.showGlobalNotification?.({
           type: "success",
-          title: notificationTitle,
-          message: notificationMessage,
-          icon: notificationIcon,
+          title: "Artifact Acquired!",
+          message: `You have successfully acquired ${item.name}!`,
         });
-
-        return {
-          credits: newCredits,
-          purchasedShopItemIds: newPurchasedShopItemIds,
-          activeTheme: newActiveTheme,
-          avatarFrameId: newAvatarFrameId,
-          activePowerUps: newActivePowerUps,
-          stats: {
-            ...prev.stats,
-            totalCreditsEarned: prev.stats.totalCreditsEarned,
-          },
-        };
-      });
-      return true;
+      } catch (error: any) {
+        console.error("Gagal membeli item:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Purchase Failed",
+          message:
+            error.response?.data?.message ||
+            "Could not complete the transaction.",
+        });
+      }
     },
-    [updatePlayerData]
+    [playerData, fetchGameData]
   );
-
   const updatePlayerProfile = useCallback(
     (newName: string, newAvatarUrl: string) => {
       updatePlayerData((prev: PlayerData) => {
@@ -860,7 +798,7 @@ export const useGameData = (authUser: AuthUser | null) => {
         if (
           themeValue !== "theme-dark" &&
           themeValue !== "theme-default" &&
-          !prev.purchasedShopItemIds.includes(themeItem?.id || "")
+          !prev.purchasedShopItemIds.includes(themeItem?.itemId || "")
         ) {
           window.showGlobalNotification?.({
             type: "error",
@@ -897,7 +835,7 @@ export const useGameData = (authUser: AuthUser | null) => {
         }
         if (
           frameValue !== null &&
-          !prev.purchasedShopItemIds.includes(frameItem?.id || "")
+          !prev.purchasedShopItemIds.includes(frameItem?.itemId || "")
         ) {
           window.showGlobalNotification?.({
             type: "error",
@@ -1050,5 +988,7 @@ export const useGameData = (authUser: AuthUser | null) => {
     applyAvatarFrame,
     resetGameData,
     claimMissionReward,
+    SHOP_ITEMS_CONFIG: shopItems,
+    ALL_BADGES_CONFIG: allBadges,
   };
 };
