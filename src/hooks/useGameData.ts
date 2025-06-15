@@ -26,7 +26,7 @@ import {
 import api from "@/lib/api";
 
 export interface PlayerTask {
-  id: string;
+  taskId: string;
   title: string;
   description?: string;
   dueDate?: string;
@@ -41,7 +41,7 @@ export interface PlayerTask {
 }
 
 export interface PlayerMission {
-  id: string;
+  missionId: string;
   title: string;
   description: string;
   target: number;
@@ -248,7 +248,7 @@ const initialPlayerDataTemplate = (authUser: AuthUser | null): PlayerData => ({
   tasks: [],
   missions: [
     {
-      id: "m_initial_steps",
+      missionId: "m_initial_steps",
       title: "Initial Steps in the Cosmos",
       description: "Complete 3 mission logs to understand your new journey.",
       target: 3,
@@ -260,7 +260,7 @@ const initialPlayerDataTemplate = (authUser: AuthUser | null): PlayerData => ({
       isClaimed: false,
     },
     {
-      id: "m_weekly_scan",
+      missionId: "m_weekly_scan",
       title: "Weekly Sector Scan",
       description: "Complete 7 mission logs this week to map nearby sectors.",
       target: 7,
@@ -315,6 +315,11 @@ export const useGameData = (authUser: AuthUser | null) => {
       ALL_BADGES_CONFIG = gameConfig.badges;
       SHOP_ITEMS_CONFIG = gameConfig.shopItems;
 
+      const todayStr = new Date().toISOString().split("T")[0];
+      const lastLoginStr = profile.lastLoginDate
+        ? new Date(profile.lastLoginDate).toISOString().split("T")[0]
+        : null;
+
       const combinedData: PlayerData = {
         id: profile.userId,
         name: profile.name,
@@ -324,9 +329,6 @@ export const useGameData = (authUser: AuthUser | null) => {
         credits: profile.credits,
         activeTheme: profile.activeTheme,
         avatarFrameId: profile.activeAvatarFrameId,
-        dailyLogin: profile.dailyLogin,
-        dailyDiscovery: profile.dailyDiscovery,
-        stats: profile.stats,
         tasks: tasks,
         missions: playerMissions,
         earnedBadgeIds: (profile.badges || []).map(
@@ -335,9 +337,24 @@ export const useGameData = (authUser: AuthUser | null) => {
         purchasedShopItemIds: (profile.inventory || []).map(
           (i: { itemId: string }) => i.itemId
         ),
+        dailyLogin: {
+          lastLoginDate: profile.lastLoginDate,
+          streak: profile.loginStreak,
+          bonusClaimedToday: todayStr === lastLoginStr,
+        },
+        dailyDiscovery: {
+          lastClaimedDate: profile.lastDiscoveryDate,
+          available:
+            todayStr !==
+            (profile.lastDiscoveryDate
+              ? new Date(profile.lastDiscoveryDate).toISOString().split("T")[0]
+              : null),
+        },
+        stats: profile.stats,
       };
 
       setPlayerData(combinedData);
+      console.log(combinedData);
     } catch (error) {
       console.error("Gagal mengambil data game dari server:", error);
     } finally {
@@ -377,63 +394,82 @@ export const useGameData = (authUser: AuthUser | null) => {
     },
     []
   );
+
   const addTask = useCallback(
-    (
+    async (
       newTaskData: Omit<
         PlayerTask,
-        "id" | "completed" | "completedAt" | "status"
+        "taskId" | "completed" | "completedAt" | "status"
       >
     ) => {
-      const taskToAdd: PlayerTask = {
-        ...newTaskData,
-        id: `task-<span class="math-inline">\{Date\.now\(\)\}\-</span>{Math.random().toString(36).substr(2, 9)}`,
-        completed: false,
-        status: "todo",
-        assignedTo: newTaskData.assignedTo
-          ? String(newTaskData.assignedTo)
-          : playerData?.id
-          ? String(playerData.id)
-          : null,
-      };
-      updatePlayerData((prevPlayerData: PlayerData) => {
-        return { tasks: [taskToAdd, ...(prevPlayerData.tasks || [])] };
-      });
-      window.showGlobalNotification?.({
-        type: "info",
-        title: "Mission Log Added!",
-        message: `"${taskToAdd.title}" has been recorded.`,
-        icon: FaFileMedicalAlt,
-      });
-      return taskToAdd;
-    },
-    [updatePlayerData, playerData?.id]
-  );
+      if (!playerData) return;
 
-  const editTask = useCallback(
-    (taskId: string, updates: Partial<PlayerTask>) => {
-      let taskTitleForNotification = "";
-      updatePlayerData((prevPlayerData: PlayerData) => {
-        const newTasks = prevPlayerData.tasks.map((task) => {
-          if (task.id === taskId) {
-            taskTitleForNotification = updates.title || task.title;
-            return { ...task, ...updates };
-          }
-          return task;
+      try {
+        const response = await api.post("/tasks", newTaskData);
+        const createdTask = response.data;
+
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            tasks: [createdTask, ...prev.tasks],
+          };
         });
-        if (!prevPlayerData.tasks.find((task) => task.id === taskId))
-          return prevPlayerData;
-        return { ...prevPlayerData, tasks: newTasks };
-      });
-      if (taskTitleForNotification) {
+
         window.showGlobalNotification?.({
           type: "info",
-          title: "Mission Log Updated!",
-          message: `Log entry "${taskTitleForNotification}" modified.`,
-          icon: FaEdit,
+          title: "Mission Log Added!",
+          message: `"${createdTask.title}" has been recorded.`,
+          icon: FaFileMedicalAlt,
+        });
+
+        return createdTask;
+      } catch (error) {
+        console.error("Gagal membuat tugas baru:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Creation Failed",
+          message: "Failed to record new mission log on the server.",
         });
       }
     },
-    [updatePlayerData]
+    [playerData, updatePlayerData]
+  );
+
+  const editTask = useCallback(
+    async (taskId: string, updates: Partial<PlayerTask>) => {
+      if (!playerData) return;
+
+      try {
+        const response = await api.put(`/tasks/${taskId}`, updates);
+        const updatedTask = response.data;
+
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            tasks: prev.tasks.map((task) =>
+              task.taskId === taskId ? updatedTask : task
+            ),
+          };
+        });
+
+        window.showGlobalNotification?.({
+          type: "info",
+          title: "Mission Log Updated!",
+          message: `Log entry "${updatedTask.title}" modified.`,
+          icon: FaEdit,
+        });
+
+        return updatedTask;
+      } catch (error) {
+        console.error(`Gagal memperbarui tugas ${taskId}:`, error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Update Failed",
+          message: "Failed to save changes to the server.",
+        });
+      }
+    },
+    [playerData, updatePlayerData]
   );
 
   const consumePowerUp = useCallback(
@@ -478,196 +514,86 @@ export const useGameData = (authUser: AuthUser | null) => {
   );
 
   const completeTask = useCallback(
-    (taskId: string) => {
-      let currentPlayerData: PlayerData | null = null;
-      setPlayerData((prev) => {
-        currentPlayerData = prev;
-        return prev;
-      });
+    async (taskId: string) => {
+      if (!playerData) return;
 
-      setTimeout(() => {
-        if (!currentPlayerData) return;
+      try {
+        const response = await api.post(`/tasks/${taskId}/complete`);
+        const { task: updatedTask, eventResult } = response.data;
 
-        let taskThatWasCompleted: PlayerTask | undefined;
-        let xpBoostMultiplier = 1;
-        let activePowerUpValue: string | null = null;
+        updatePlayerData((prev) => {
+          if (!prev) return {};
 
-        if (currentPlayerData.activePowerUps) {
-          const boost = Object.entries(currentPlayerData.activePowerUps).find(
-            ([key, value]) => key.includes("xp_boost") && value.active
+          const newState = { ...prev };
+
+          newState.tasks = prev.tasks.map((t) =>
+            t.taskId === taskId ? updatedTask : t
           );
-          if (boost) {
-            xpBoostMultiplier = 2;
-            activePowerUpValue = boost[0];
-          }
-        }
-        updatePlayerData((prev: PlayerData) => {
-          const originalLevel = prev.level;
-          let madeChanges = false;
-          let taskTitleForNotification = "";
-          let taskCompletedXp = 0;
-          let taskCompletedCredits = 0;
 
-          const newTasks = prev.tasks.map((t) => {
-            if (t.id === taskId && !t.completed) {
-              madeChanges = true;
-              taskThatWasCompleted = {
-                ...t,
-                completed: true,
-                completedAt: new Date().toISOString(),
-                status: "done",
-              };
-
-              taskCompletedXp = taskThatWasCompleted.xp * xpBoostMultiplier;
-
-              taskCompletedCredits =
-                taskThatWasCompleted.credits ||
-                Math.floor(taskThatWasCompleted.xp / 5);
-              taskTitleForNotification = taskThatWasCompleted.title;
-              return taskThatWasCompleted;
-            }
-            return t;
-          });
-
-          if (!madeChanges || !taskThatWasCompleted) {
-            return {};
+          const user = prev;
+          user.xp += updatedTask.xp;
+          user.credits += updatedTask.credits;
+          if (eventResult.leveledUp) {
+            user.level = eventResult.leveledUp.to;
           }
 
-          if (activePowerUpValue) {
-            window.showGlobalNotification?.({
-              type: "quest",
-              title: "Hyper-Boost Active!",
-              message: `XP digandakan untuk "${taskTitleForNotification}"!`,
-              icon: FaBolt,
-            });
-          }
-
-          let newXp = prev.xp + taskCompletedXp;
-          let newCredits = prev.credits + taskCompletedCredits;
-          let newLevel = prev.level;
-          let leveledUp = false;
-
-          while (
-            newLevel < XP_PER_LEVEL.length - 1 &&
-            newXp >= XP_PER_LEVEL[newLevel]
+          if (
+            eventResult.missionsReadyToClaim &&
+            eventResult.missionsReadyToClaim.length > 0
           ) {
-            newLevel++;
-            leveledUp = true;
-          }
-
-          const updatedMissions = prev.missions.map((mission) => {
-            let currentProgress = mission.currentProgress;
-            if (
-              !mission.isClaimed &&
-              currentProgress < mission.target &&
-              (mission.type === "once" ||
-                mission.type === "weekly" ||
-                mission.type === "daily")
-            ) {
-              currentProgress++;
-            }
-            if (
-              currentProgress >= mission.target &&
-              !mission.isClaimed &&
-              prev.missions.find(
-                (pm) => pm.id === mission.id && pm.currentProgress < pm.target
-              )
-            ) {
-              window.showGlobalNotification?.({
-                type: "quest",
-                title: "Constellation Objective Met!",
-                message: `"${mission.title}" ready for debrief. Claim your reward!`,
-                icon: FaRocket,
-              });
-            }
-            return { ...mission, currentProgress };
-          });
-
-          const newEarnedBadgeIds = [...prev.earnedBadgeIds];
-          ALL_BADGES_CONFIG.forEach((badgeConfig) => {
-            if (!prev.earnedBadgeIds.includes(badgeConfig.id)) {
-              let conditionMet = false;
-              const totalTasksNowCompleted = prev.stats.tasksCompleted + 1;
-              if (
-                badgeConfig.id === "b_first_mission" &&
-                totalTasksNowCompleted === 1
-              )
-                conditionMet = true;
-              if (
-                badgeConfig.id === "b_explorer_initiate" &&
-                totalTasksNowCompleted >= 3
-              )
-                conditionMet = true;
-              if (
-                badgeConfig.id === "b_diligent_commander" &&
-                totalTasksNowCompleted >= 10
-              )
-                conditionMet = true;
-              if (
-                badgeConfig.id === "b_level_5_cadet" &&
-                newLevel >= 5 &&
-                originalLevel < 5
-              )
-                conditionMet = true;
-              if (
-                badgeConfig.id === "b_credits_collector" &&
-                newCredits >= 500 &&
-                prev.credits < 500
-              )
-                conditionMet = true;
-
-              if (conditionMet && !newEarnedBadgeIds.includes(badgeConfig.id)) {
-                newEarnedBadgeIds.push(badgeConfig.id);
-                window.showGlobalNotification?.({
-                  type: "success",
-                  title: "Commendation Earned!",
-                  message: `New insignia: ${badgeConfig.name}`,
-                  icon: badgeConfig.icon || FaAward,
-                });
+            const readyMissionIds = new Set(
+              eventResult.missionsReadyToClaim.map((m: any) => m.missionId)
+            );
+            newState.missions = prev.missions.map((pm) => {
+              if (readyMissionIds.has(pm.missionId)) {
               }
-            }
-          });
-
-          if (leveledUp) {
-            window.showGlobalNotification?.({
-              type: "quest",
-              title: "Promotion!",
-              message: `Reached Command Level ${newLevel}!`,
-              icon: FaUserShield,
+              return pm;
             });
           }
 
-          window.showGlobalNotification?.({
-            type: "success",
-            title: "Objective Cleared!",
-            message: `+${taskCompletedXp} XP & +${taskCompletedCredits} CP for "${taskTitleForNotification}".`,
-            icon: FaCheckCircle,
-          });
-
-          return {
-            tasks: newTasks,
-            xp: newXp,
-            level: newLevel,
-            credits: newCredits,
-            missions: updatedMissions,
-            earnedBadgeIds: newEarnedBadgeIds,
-            stats: {
-              ...prev.stats,
-              tasksCompleted: prev.stats.tasksCompleted + 1,
-              totalXpEarned: prev.stats.totalXpEarned + taskCompletedXp,
-              totalCreditsEarned:
-                prev.stats.totalCreditsEarned + taskCompletedCredits,
-            },
-          };
+          return newState;
         });
 
-        if (activePowerUpValue) {
-          consumePowerUp(activePowerUpValue);
+        window.showGlobalNotification?.({
+          type: "success",
+          title: "Objective Cleared!",
+          message: `+${updatedTask.xp} XP & +${updatedTask.credits} CP for "${updatedTask.title}".`,
+          icon: FaCheckCircle,
+        });
+
+        if (eventResult.leveledUp) {
+          window.showGlobalNotification?.({
+            type: "quest",
+            title: "Promotion!",
+            message: `Reached Command Level ${eventResult.leveledUp.to}!`,
+            icon: FaUserShield,
+          });
         }
-      }, 50);
+
+        if (eventResult.badgesEarned && eventResult.badgesEarned.length > 0) {
+          eventResult.badgesEarned.forEach((badge: any) => {
+            window.showGlobalNotification?.({
+              type: "success",
+              title: "Commendation Earned!",
+              message: `New insignia: ${badge.name}`,
+              icon: FaAward,
+            });
+          });
+        }
+      } catch (error: any) {
+        console.error(`Gagal menyelesaikan tugas ${taskId}:`, error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Action Failed",
+          message:
+            error.response?.data?.message ||
+            "Failed to complete the objective on the server.",
+        });
+      }
     },
-    [setPlayerData, updatePlayerData, consumePowerUp]
+    [playerData, updatePlayerData]
   );
+
   const getXpBoundaries = useCallback(() => {
     if (!playerData)
       return {
@@ -792,19 +718,6 @@ export const useGameData = (authUser: AuthUser | null) => {
       });
     }
   }, [playerData, updatePlayerData]);
-
-  useEffect(() => {
-    if (
-      playerData &&
-      !isLoadingData &&
-      authUser &&
-      !playerData.dailyLogin.bonusClaimedToday &&
-      playerData.dailyLogin.lastLoginDate !==
-        new Date().toISOString().split("T")[0]
-    ) {
-      handleDailyLogin();
-    }
-  }, [playerData?.id, isLoadingData, authUser]);
 
   const purchaseShopItem = useCallback(
     (itemId: string) => {
@@ -1036,7 +949,7 @@ export const useGameData = (authUser: AuthUser | null) => {
   const claimMissionReward = useCallback(
     (missionId: string) => {
       updatePlayerData((prev: PlayerData) => {
-        const mission = prev.missions.find((m) => m.id === missionId);
+        const mission = prev.missions.find((m) => m.missionId === missionId);
 
         if (
           !mission ||
@@ -1101,7 +1014,7 @@ export const useGameData = (authUser: AuthUser | null) => {
         }
 
         const updatedMissions = prev.missions.map((m) =>
-          m.id === missionId ? { ...m, isClaimed: true } : m
+          m.missionId === missionId ? { ...m, isClaimed: true } : m
         );
 
         return {

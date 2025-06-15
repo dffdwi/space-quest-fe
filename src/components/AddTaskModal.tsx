@@ -9,7 +9,7 @@ interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (
-    taskData: Omit<PlayerTask, "id" | "completed" | "completedAt">,
+    taskData: Omit<PlayerTask, "taskId" | "completed" | "completedAt">,
     id?: string
   ) => void;
   existingTask?: PlayerTask | null;
@@ -57,12 +57,8 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             existingTask.status ||
               (projectColumns.length > 0 ? projectColumns[0].id : "todo")
           );
-        } else {
-          setAssignedTo(null);
-          setStatus("todo");
         }
       } else {
-        // Reset form untuk tugas baru
         setTitle("");
         setDescription("");
         setDueDate(defaultDate || "");
@@ -73,7 +69,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         setStatus(projectColumns.length > 0 ? projectColumns[0].id : "todo");
       }
     }
-  }, [existingTask, isOpen, projectId, projectColumns, defaultDate]);
+  }, [existingTask, isOpen, defaultDate]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -96,7 +92,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             (projectColumns.length > 0 ? projectColumns[0].id : "todo")
           : "todo",
       },
-      existingTask?.id
+      existingTask?.taskId
     );
   };
 

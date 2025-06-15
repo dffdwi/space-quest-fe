@@ -50,7 +50,7 @@ export default function DashboardPage() {
   };
 
   const handleTaskSave = (
-    taskData: Omit<PlayerTask, "id" | "completed" | "completedAt">,
+    taskData: Omit<PlayerTask, "taskId" | "completed" | "completedAt">,
     id?: string
   ) => {
     if (id) {
@@ -167,14 +167,14 @@ export default function DashboardPage() {
           {tasksToday.length > 0 ? (
             tasksToday.map((task) => (
               <div
-                key={task.id}
+                key={task.taskId}
                 className="task-item-bg flex items-center justify-between p-3.5 bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 transition-all"
               >
                 <div className="flex items-center">
                   <input
                     type="checkbox"
                     checked={task.completed}
-                    onChange={() => completeTask(task.id)}
+                    onChange={() => completeTask(task.taskId)}
                     className="form-checkbox h-5 w-5 text-purple-400 rounded focus:ring-purple-500 focus:ring-offset-gray-800 mr-3 cursor-pointer bg-gray-800 border-gray-600"
                   />
                   <div>
@@ -215,7 +215,7 @@ export default function DashboardPage() {
 
               return (
                 <div
-                  key={mission.id}
+                  key={mission.missionId}
                   className={`p-4 rounded-lg shadow-sm transition-opacity ${
                     isClaimed
                       ? "bg-gray-700/50 opacity-60"
@@ -264,7 +264,7 @@ export default function DashboardPage() {
 
                     {isCompleted && !isClaimed && (
                       <button
-                        onClick={() => claimMissionReward(mission.id)}
+                        onClick={() => claimMissionReward(mission.missionId)}
                         className="btn btn-warning text-xs !py-1 !px-3 animate-pulse"
                       >
                         <FaTrophy className="mr-1.5" /> Claim Reward

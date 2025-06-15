@@ -171,7 +171,7 @@ export default function CrewProjectsPage() {
   };
 
   const handleTaskSave = (
-    taskDataFromModal: Omit<PlayerTask, "id" | "completed" | "completedAt">,
+    taskDataFromModal: Omit<PlayerTask, "taskId" | "completed" | "completedAt">,
     taskId?: string
   ) => {
     if (!currentProjectId || !selectedProject) return;
@@ -193,7 +193,7 @@ export default function CrewProjectsPage() {
     if (taskId) {
       editTask(taskId, taskPayload);
     } else {
-      const { status, id, completed, completedAt, ...payloadForAdd } =
+      const { status, taskId, completed, completedAt, ...payloadForAdd } =
         taskPayload as PlayerTask;
       addTask(payloadForAdd);
     }
@@ -300,7 +300,7 @@ export default function CrewProjectsPage() {
     if (!taskId || !playerData || !selectedProject) return;
 
     const taskToMove = playerData.tasks.find(
-      (t) => t.id === taskId && t.projectId === currentProjectId
+      (t) => t.taskId === taskId && t.projectId === currentProjectId
     );
 
     if (taskToMove && taskToMove.status !== targetColumnId) {
@@ -503,12 +503,12 @@ export default function CrewProjectsPage() {
                     .filter((t) => t.status === column.id)
                     .map((task) => (
                       <div
-                        key={task.id}
+                        key={task.taskId}
                         draggable
-                        onDragStart={(e) => handleDragStart(e, task.id)}
+                        onDragStart={(e) => handleDragStart(e, task.taskId)}
                         onDragEnd={handleDragEnd}
                         className={`kanban-task-card bg-gray-700 border-gray-600 hover:border-indigo-500 p-3 rounded-md shadow-sm cursor-grab ${
-                          draggedTaskId === task.id ? "dragging-task" : ""
+                          draggedTaskId === task.taskId ? "dragging-task" : ""
                         }`}
                       >
                         <div className="flex justify-between items-start mb-1">
