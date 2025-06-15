@@ -1,4 +1,4 @@
-"use client"; 
+"use client";
 
 import React, {
   createContext,
@@ -11,7 +11,7 @@ import React, {
 import { useRouter, usePathname } from "next/navigation";
 
 export interface User {
-  id: number;
+  userId: string;
   email: string;
   name?: string;
 }
@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     (newToken: string, userData: User) => {
       localStorage.setItem("authToken", newToken);
       localStorage.setItem("authUser", JSON.stringify(userData));
-      document.cookie = "isLoggedIn=true; path=/; max-age=" + 60 * 60 * 24 * 7; 
+      document.cookie = "isLoggedIn=true; path=/; max-age=" + 60 * 60 * 24 * 7;
       setToken(newToken);
       setUser(userData);
       router.push("/");

@@ -235,7 +235,7 @@ export let SHOP_ITEMS_CONFIG: ShopItem[] = [
 ];
 
 const initialPlayerDataTemplate = (authUser: AuthUser | null): PlayerData => ({
-  id: authUser ? String(authUser.id) : "defaultUser",
+  id: authUser ? String(authUser.userId) : "defaultUser",
   name: authUser?.name || authUser?.email?.split("@")[0] || "Explorer",
   avatarUrl:
     (authUser as any)?.photoURL ||

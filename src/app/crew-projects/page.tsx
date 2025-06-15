@@ -16,25 +16,32 @@ import AddTaskModal from "@/components/AddTaskModal";
 import InviteMemberModal, {
   NewMemberData,
 } from "@/components/InviteMemberModal";
+import api from "@/lib/api";
+import AddMemberModal from "@/components/AddMemberModal";
 
 export interface ProjectMember {
-  id: string;
+  userId: string;
   name: string;
   avatarUrl: string;
   role?: string;
+  ProjectMember?: {
+    role: string;
+  };
 }
 
 export interface KanbanColumn {
-  id: string;
+  columnId: string;
   title: string;
+  order: number;
 }
 
 export interface CrewProject {
-  id: string;
+  projectId: string;
   name: string;
   description?: string;
-  members: ProjectMember[];
-  columns: KanbanColumn[];
+  members?: ProjectMember[];
+  columns?: KanbanColumn[];
+  tasks?: PlayerTask[];
 }
 
 export default function CrewProjectsPage() {
@@ -47,112 +54,46 @@ export default function CrewProjectsPage() {
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<PlayerTask | null>(null);
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
 
-  const getProjectsLocalStorageKey = useCallback(() => {
-    return playerData?.id
-      ? `spaceQuestProjects_${String(playerData.id)}`
-      : null;
-  }, [playerData?.id]);
-
-  const createDefaultProject = useCallback(
-    (pd: PlayerData): CrewProject => ({
-      id: `proj-${Date.now()}`,
-      name: "Genesis Star Launch",
-      description:
-        "Prepare the main starship for its maiden voyage across the galaxy.",
-      members: [
-        {
-          id: String(pd.id),
-          name: pd.name,
-          avatarUrl: pd.avatarUrl,
-          role: "Commander",
-        },
-        {
-          id: "dummy-crew-1",
-          name: "Engineer Sparks",
-          avatarUrl: `https://ui-avatars.com/api/?name=ES&background=0D8ABC&color=fff&size=40`,
-          role: "Chief Engineer",
-        },
-        {
-          id: "dummy-crew-2",
-          name: "Navigator Orion",
-          avatarUrl: `https://ui-avatars.com/api/?name=NO&background=7C3AED&color=fff&size=40`,
-          role: "Navigator",
-        },
-      ],
-      columns: [
-        { id: "backlog", title: "Mission Briefing (Backlog)" },
-        { id: "todo", title: "Pre-Flight Checks (To Do)" },
-        { id: "inprogress", title: "Systems Online (In Progress)" },
-        { id: "done", title: "Ready for Launch (Done)" },
-      ],
-    }),
-    []
+  const selectedProject = projects.find(
+    (p) => p.projectId === currentProjectId
   );
 
-  useEffect(() => {
-    if (playerData && playerData.id && !authLoading && !isLoadingData) {
-      const storedProjectsKey = getProjectsLocalStorageKey();
-      if (!storedProjectsKey) return;
+  const projectTasks = selectedProject?.tasks || [];
 
-      const storedProjects = localStorage.getItem(storedProjectsKey);
-      if (storedProjects) {
-        try {
-          const parsedProjects = JSON.parse(storedProjects) as CrewProject[];
-          setProjects(parsedProjects);
-          if (
-            parsedProjects.length > 0 &&
-            (!currentProjectId ||
-              !parsedProjects.find((p) => p.id === currentProjectId))
-          ) {
-            setCurrentProjectId(parsedProjects[0].id);
-          } else if (parsedProjects.length === 0) {
-            const defaultProject = createDefaultProject(playerData);
-            setProjects([defaultProject]);
-            setCurrentProjectId(defaultProject.id);
-          }
-        } catch (e) {
-          console.error("Failed to parse projects from localStorage", e);
-          const defaultProject = createDefaultProject(playerData);
-          setProjects([defaultProject]);
-          setCurrentProjectId(defaultProject.id);
-        }
-      } else {
-        const defaultProject = createDefaultProject(playerData);
-        setProjects([defaultProject]);
-        setCurrentProjectId(defaultProject.id);
-      }
+  const handleCreateProject = useCallback(async () => {
+    if (!playerData) return;
+
+    const projectCount = projects.length + 1;
+    const newProjectData = {
+      name: `Expedition #${projectCount}`,
+      description: "Charted for new discoveries.",
+    };
+
+    try {
+      const response = await api.post("/projects", newProjectData);
+      const createdProject = response.data;
+      setProjects((prev) => [...prev, createdProject]);
+      setCurrentProjectId(createdProject.projectId);
+      window.showGlobalNotification?.({
+        type: "success",
+        title: "New Expedition Charted!",
+        message: `"${createdProject.name}" is now active and saved.`,
+      });
+    } catch (error) {
+      console.error("Gagal membuat proyek baru:", error);
+      window.showGlobalNotification?.({
+        type: "error",
+        title: "Failed to Chart Expedition",
+        message: "Could not save the new expedition to the server.",
+      });
     }
-  }, [
-    playerData,
-    authLoading,
-    isLoadingData,
-    currentProjectId,
-    getProjectsLocalStorageKey,
-    createDefaultProject,
-  ]);
+  }, [playerData, projects]);
 
-  useEffect(() => {
-    const storedProjectsKey = getProjectsLocalStorageKey();
-    if (
-      storedProjectsKey &&
-      projects &&
-      projects.length > 0 &&
-      playerData?.id &&
-      !isLoadingData
-    ) {
-      localStorage.setItem(storedProjectsKey, JSON.stringify(projects));
-    }
-  }, [projects, playerData?.id, isLoadingData, getProjectsLocalStorageKey]);
-
-  const selectedProject = projects.find((p) => p.id === currentProjectId);
-  const projectTasks =
-    playerData?.tasks.filter((t) => t.projectId === currentProjectId) || [];
-
-  const openCreateTaskModalForProject = () => {
+  const openCreateTaskModalForProject = useCallback(() => {
     if (!currentProjectId) {
       window.showGlobalNotification?.({
         type: "error",
@@ -163,182 +104,158 @@ export default function CrewProjectsPage() {
     }
     setEditingTask(null);
     setIsTaskModalOpen(true);
-  };
+  }, [currentProjectId]);
 
-  const openEditTaskModal = (task: PlayerTask) => {
+  const openEditTaskModal = useCallback((task: PlayerTask) => {
     setEditingTask(task);
     setIsTaskModalOpen(true);
-  };
+  }, []);
 
-  const handleTaskSave = (
-    taskDataFromModal: Omit<PlayerTask, "taskId" | "completed" | "completedAt">,
-    taskId?: string
-  ) => {
-    if (!currentProjectId || !selectedProject) return;
+  const handleTaskSave = useCallback(
+    (
+      taskDataFromModal: Omit<
+        PlayerTask,
+        "taskId" | "completed" | "completedAt"
+      >,
+      taskId?: string
+    ) => {
+      if (!currentProjectId || !selectedProject || !selectedProject.columns)
+        return;
+      const defaultStatus = selectedProject.columns[0]?.columnId || "todo";
 
-    const defaultStatusFromProject = selectedProject.columns[0]?.id || "todo";
+      const payload = {
+        ...taskDataFromModal,
+        projectId: currentProjectId,
+        status: taskDataFromModal.status || defaultStatus,
+      };
 
-    const taskPayload: Partial<PlayerTask> = {
-      title: taskDataFromModal.title,
-      description: taskDataFromModal.description,
-      dueDate: taskDataFromModal.dueDate,
-      xp: taskDataFromModal.xp,
-      credits: taskDataFromModal.credits,
-      category: taskDataFromModal.category,
-      projectId: currentProjectId,
-      status: taskDataFromModal.status || defaultStatusFromProject,
-      assignedTo: taskDataFromModal.assignedTo || null,
-    };
-
-    if (taskId) {
-      editTask(taskId, taskPayload);
-    } else {
-      const { status, taskId, completed, completedAt, ...payloadForAdd } =
-        taskPayload as PlayerTask;
-      addTask(payloadForAdd);
-    }
-    setIsTaskModalOpen(false);
-  };
-
-  const handleInviteMember = (memberData: NewMemberData) => {
-    if (!currentProjectId) return;
-    setProjects((prevProjects) =>
-      prevProjects.map((p) => {
-        if (p.id === currentProjectId) {
-          const newMember: ProjectMember = {
-            id: `member-${Date.now()}-${Math.random()
-              .toString(36)
-              .substr(2, 5)}`,
-            ...memberData,
-            avatarUrl:
-              memberData.avatarUrl ||
-              `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                memberData.name
-              )}&background=random&color=fff&size=40`,
-          };
-          if (p.members.find((m) => m.name === newMember.name)) {
-            window.showGlobalNotification?.({
-              type: "warning",
-              title: "Crew Member Exists",
-              message: `"${newMember.name}" is already part of this expedition.`,
-            });
-            return p;
-          }
-          window.showGlobalNotification?.({
-            type: "success",
-            title: "Crew Member Added!",
-            message: `"${newMember.name}" has joined expedition ${p.name}.`,
-          });
-          return { ...p, members: [...p.members, newMember] };
-        }
-        return p;
-      })
-    );
-    setIsInviteModalOpen(false);
-  };
-
-  const handleDragStart = (e: DragEvent<HTMLDivElement>, taskId: string) => {
-    setDraggedTaskId(taskId);
-    e.dataTransfer.setData("taskId", taskId);
-    e.dataTransfer.effectAllowed = "move";
-    e.currentTarget.classList.add("dragging-task");
-  };
-
-  const handleDragEnd = (e: DragEvent<HTMLDivElement>) => {
-    setDraggedTaskId(null);
-    if (dragOverColumnId) {
-      document
-        .querySelector(`.kanban-column[data-column-id="${dragOverColumnId}"]`)
-        ?.classList.remove("drag-over-column-highlight");
-    }
-    setDragOverColumnId(null);
-    e.currentTarget.classList.remove("dragging-task");
-  };
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>, columnId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDragEnter = (e: DragEvent<HTMLDivElement>, columnId: string) => {
-    e.preventDefault();
-    if (columnId !== dragOverColumnId) {
-      if (dragOverColumnId) {
-        document
-          .querySelector(`.kanban-column[data-column-id="${dragOverColumnId}"]`)
-          ?.classList.remove("drag-over-column-highlight");
-      }
-      setDragOverColumnId(columnId);
-      e.currentTarget
-        .closest(".kanban-column")
-        ?.classList.add("drag-over-column-highlight");
-    }
-  };
-
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    const kanbanColumn = e.currentTarget.closest(".kanban-column");
-    if (kanbanColumn && !kanbanColumn.contains(e.relatedTarget as Node)) {
-      if (dragOverColumnId === kanbanColumn.getAttribute("data-column-id")) {
-        setDragOverColumnId(null);
-      }
-      kanbanColumn.classList.remove("drag-over-column-highlight");
-    }
-  };
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>, targetColumnId: string) => {
-    e.preventDefault();
-    const taskId = draggedTaskId || e.dataTransfer.getData("taskId");
-
-    const currentColumnEl = document.querySelector(
-      `.kanban-column[data-column-id="${dragOverColumnId}"]`
-    );
-    currentColumnEl?.classList.remove("drag-over-column-highlight");
-
-    setDraggedTaskId(null);
-    setDragOverColumnId(null);
-
-    if (!taskId || !playerData || !selectedProject) return;
-
-    const taskToMove = playerData.tasks.find(
-      (t) => t.taskId === taskId && t.projectId === currentProjectId
-    );
-
-    if (taskToMove && taskToMove.status !== targetColumnId) {
-      const originalStatus = taskToMove.status;
-      editTask(taskId, { status: targetColumnId });
-
-      const doneColumn = selectedProject.columns.find(
-        (c) => c.id === "done" || c.title.toLowerCase().includes("done")
-      );
-      const isMovingToDone = doneColumn && targetColumnId === doneColumn.id;
-      const isMovingFromDone =
-        doneColumn &&
-        originalStatus === doneColumn.id &&
-        targetColumnId !== doneColumn.id;
-
-      if (isMovingToDone && !taskToMove.completed) {
-        completeTask(taskId);
-      } else if (isMovingFromDone && taskToMove.completed) {
-        editTask(taskId, { completed: false, completedAt: undefined });
-        window.showGlobalNotification?.({
-          type: "info",
-          title: "Objective Reactivated",
-          message: `Objective "${taskToMove.title}" moved from 'Done' and is now active.`,
-        });
+      if (taskId) {
+        editTask(taskId, payload);
       } else {
+        addTask(payload);
+      }
+      setIsTaskModalOpen(false);
+    },
+    [currentProjectId, selectedProject, addTask, editTask]
+  );
+
+  const handleAddMember = useCallback(
+    async (userId: string, role?: string) => {
+      if (!currentProjectId) return;
+      try {
+        await api.post(`/projects/${currentProjectId}/members`, {
+          userId,
+          role,
+        });
+        const response = await api.get(`/projects/${currentProjectId}`);
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.projectId === currentProjectId ? response.data : p
+          )
+        );
+        setIsAddMemberModalOpen(false);
+        window.showGlobalNotification?.({
+          type: "success",
+          title: "Member Added!",
+          message: "The new member has been added to the expedition.",
+        });
+      } catch (error: any) {
+        console.error("Failed to add member:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Error",
+          message: error.response?.data?.message || "Could not add member.",
+        });
+      }
+    },
+    [currentProjectId, projects]
+  );
+
+  const handleDragStart = useCallback(
+    (e: DragEvent<HTMLDivElement>, taskId: string) => {
+      setDraggedTaskId(taskId);
+      e.dataTransfer.setData("taskId", taskId);
+      e.dataTransfer.effectAllowed = "move";
+    },
+    []
+  );
+
+  const handleDragEnd = useCallback((e: DragEvent<HTMLDivElement>) => {
+    setDraggedTaskId(null);
+    setDragOverColumnId(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  }, []);
+
+  const handleDragEnter = useCallback(
+    (e: DragEvent<HTMLDivElement>, columnId: string) => {
+      setDragOverColumnId(columnId);
+    },
+    []
+  );
+
+  const handleDrop = useCallback(
+    async (e: DragEvent<HTMLDivElement>, targetColumnId: string) => {
+      e.preventDefault();
+      const taskId = draggedTaskId || e.dataTransfer.getData("taskId");
+
+      const currentColumnEl = document.querySelector(
+        `.kanban-column[data-column-id="${dragOverColumnId}"]`
+      );
+      currentColumnEl?.classList.remove("drag-over-column-highlight");
+      setDraggedTaskId(null);
+      setDragOverColumnId(null);
+
+      if (!taskId || !selectedProject) return;
+
+      const taskToMove = selectedProject.tasks?.find(
+        (t) => t.taskId === taskId
+      );
+      if (!taskToMove || taskToMove.status === targetColumnId) {
+        return;
+      }
+
+      try {
+        await api.put(`/tasks/${taskId}/move`, { newStatus: targetColumnId });
+        setProjects((prevProjects) =>
+          prevProjects.map((p) => {
+            if (p.projectId === selectedProject.projectId && p.tasks) {
+              return {
+                ...p,
+                tasks: p.tasks.map((t) =>
+                  t.taskId === taskId ? { ...t, status: targetColumnId } : t
+                ),
+              };
+            }
+            return p;
+          })
+        );
+
+        const targetColumn = selectedProject.columns?.find(
+          (c) => c.columnId === targetColumnId
+        );
         window.showGlobalNotification?.({
           type: "info",
           title: "Objective Relocated",
           message: `Objective "${taskToMove.title}" moved to ${
-            selectedProject.columns.find((c) => c.id === targetColumnId)
-              ?.title || targetColumnId
+            targetColumn?.title || targetColumnId
           }.`,
         });
+      } catch (error) {
+        console.error("Gagal memindahkan tugas:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Move Failed",
+          message: "Could not update the task status on the server.",
+        });
       }
-    }
-  };
+    },
+    [draggedTaskId, dragOverColumnId, selectedProject, projects]
+  );
 
-  const formatDate = (dateString?: string) => {
+  const formatDate = useCallback((dateString?: string) => {
     if (!dateString) return "Flexible";
     try {
       const date = new Date(dateString);
@@ -352,7 +269,54 @@ export default function CrewProjectsPage() {
     } catch {
       return "Invalid Date";
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!playerData) return;
+      try {
+        const response = await api.get("/projects");
+        const projectsFromApi: CrewProject[] = response.data;
+        setProjects(projectsFromApi);
+        if (projectsFromApi.length > 0 && !currentProjectId) {
+          setCurrentProjectId(projectsFromApi[0].projectId);
+        }
+      } catch (error) {
+        console.error("Gagal mengambil data proyek:", error);
+      }
+    };
+
+    if (playerData && !isLoadingData) {
+      fetchProjects();
+    }
+  }, [playerData, isLoadingData]);
+
+  useEffect(() => {
+    const fetchProjectDetails = async () => {
+      if (!currentProjectId) return;
+      const projectInState = projects.find(
+        (p) => p.projectId === currentProjectId
+      );
+      if (projectInState && projectInState.columns) {
+        return;
+      }
+      try {
+        const response = await api.get(`/projects/${currentProjectId}`);
+        const detailedProject = response.data;
+        setProjects((prevProjects) =>
+          prevProjects.map((p) =>
+            p.projectId === currentProjectId ? detailedProject : p
+          )
+        );
+      } catch (error) {
+        console.error("Gagal mengambil detail proyek:", error);
+      }
+    };
+
+    if (currentProjectId) {
+      fetchProjectDetails();
+    }
+  }, [currentProjectId, projects]);
 
   if (authLoading || isLoadingData || !playerData) {
     return (
@@ -363,7 +327,7 @@ export default function CrewProjectsPage() {
     );
   }
 
-  if (projects.length === 0 && !isLoadingData && !authLoading) {
+  if (projects.length === 0) {
     return (
       <div className="card p-6 text-center">
         <FaUsersCog className="text-6xl text-indigo-400 mx-auto mb-4" />
@@ -373,28 +337,12 @@ export default function CrewProjectsPage() {
         <p className="text-gray-400 mb-6">
           Assemble your crew and embark on a new expedition!
         </p>
-        <button
-          onClick={() => {
-            if (playerData) {
-              const newProject = createDefaultProject(playerData);
-              newProject.name = "My First Expedition";
-              setProjects((prev) => [...prev, newProject]);
-              setCurrentProjectId(newProject.id);
-              window.showGlobalNotification?.({
-                type: "success",
-                title: "Expedition Planned!",
-                message: `"${newProject.name}" is ready for objectives.`,
-              });
-            }
-          }}
-          className="btn btn-primary"
-        >
+        <button onClick={handleCreateProject} className="btn btn-primary">
           <FaPlus className="mr-2" /> Plan New Expedition
         </button>
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
       <div className="card p-5 md:p-6 bg-gray-800 border-gray-700">
@@ -408,7 +356,7 @@ export default function CrewProjectsPage() {
                 className="input-field px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500 text-xl font-semibold min-w-[200px]"
               >
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
+                  <option key={p.projectId} value={p.projectId}>
                     {p.name}
                   </option>
                 ))}
@@ -423,21 +371,7 @@ export default function CrewProjectsPage() {
               </span>
             )}
             <button
-              onClick={() => {
-                if (playerData) {
-                  const newProject = createDefaultProject(playerData);
-                  const projectCount = projects.length + 1;
-                  newProject.name = `Expedition #${projectCount}`;
-                  newProject.id = `proj-${Date.now()}`;
-                  setProjects((prev) => [...prev, newProject]);
-                  setCurrentProjectId(newProject.id);
-                  window.showGlobalNotification?.({
-                    type: "success",
-                    title: "New Expedition Charted!",
-                    message: `"${newProject.name}" is now active.`,
-                  });
-                }
-              }}
+              onClick={handleCreateProject}
               className="btn btn-success text-sm !px-2 !py-1"
               title="Chart New Expedition"
             >
@@ -446,17 +380,7 @@ export default function CrewProjectsPage() {
           </div>
           <div className="flex space-x-2 mt-3 sm:mt-0">
             <button
-              onClick={() => {
-                if (!currentProjectId) {
-                  window.showGlobalNotification?.({
-                    type: "warning",
-                    title: "Select Expedition",
-                    message: "Please select an expedition to manage crew.",
-                  });
-                  return;
-                }
-                setIsInviteModalOpen(true);
-              }}
+              onClick={() => setIsAddMemberModalOpen(true)}
               className="btn btn-primary text-sm flex items-center"
               disabled={!currentProjectId}
             >
@@ -478,29 +402,32 @@ export default function CrewProjectsPage() {
               : "Select or create an expedition to view details.")}
         </p>
 
-        {selectedProject && (
+        {selectedProject && selectedProject.columns ? (
           <div className="kanban-board no-scrollbar">
             {selectedProject.columns.map((column) => (
               <div
-                key={column.id}
-                data-column-id={column.id}
+                key={column.columnId}
+                data-column-id={column.columnId}
                 className={`kanban-column bg-gray-800/70 border-gray-700/80 p-3 rounded-lg transition-all duration-200 ${
-                  dragOverColumnId === column.id
+                  dragOverColumnId === column.columnId
                     ? "drag-over-column-highlight"
                     : ""
                 }`}
-                onDragOver={(e) => handleDragOver(e, column.id)}
-                onDragEnter={(e) => handleDragEnter(e, column.id)}
-                onDragLeave={(e) => handleDragLeave(e)}
-                onDrop={(e) => handleDrop(e, column.id)}
+                onDragOver={(e) => handleDragOver(e)}
+                onDragEnter={(e) => handleDragEnter(e, column.columnId)}
+                onDrop={(e) => handleDrop(e, column.columnId)}
               >
                 <h3 className="kanban-column-title text-gray-200 border-gray-600 px-1 pb-2">
                   {column.title} (
-                  {projectTasks.filter((t) => t.status === column.id).length})
+                  {
+                    projectTasks.filter((t) => t.status === column.columnId)
+                      .length
+                  }
+                  )
                 </h3>
                 <div className="kanban-tasks-container no-scrollbar space-y-3 p-1 min-h-[100px]">
                   {projectTasks
-                    .filter((t) => t.status === column.id)
+                    .filter((t) => t.status === column.columnId)
                     .map((task) => (
                       <div
                         key={task.taskId}
@@ -538,23 +465,23 @@ export default function CrewProjectsPage() {
                             +{task.xp} XP
                           </span>
                           {task.assignedTo &&
-                          selectedProject.members.find(
-                            (m) => m.id === task.assignedTo
+                          selectedProject.members?.find(
+                            (m) => m.userId === task.assignedTo
                           ) ? (
                             <img
                               src={
                                 selectedProject.members.find(
-                                  (m) => m.id === task.assignedTo
+                                  (m) => m.userId === task.assignedTo
                                 )?.avatarUrl
                               }
                               alt={
                                 selectedProject.members.find(
-                                  (m) => m.id === task.assignedTo
+                                  (m) => m.userId === task.assignedTo
                                 )?.name
                               }
                               title={
                                 selectedProject.members.find(
-                                  (m) => m.id === task.assignedTo
+                                  (m) => m.userId === task.assignedTo
                                 )?.name
                               }
                               className="assigned-avatar w-6 h-6 bg-gray-600 text-gray-200"
@@ -572,8 +499,8 @@ export default function CrewProjectsPage() {
                         </div>
                       </div>
                     ))}
-                  {projectTasks.filter((t) => t.status === column.id).length ===
-                    0 && (
+                  {projectTasks.filter((t) => t.status === column.columnId)
+                    .length === 0 && (
                     <p className="text-xs text-gray-500 italic p-2 text-center">
                       No objectives in this phase.
                     </p>
@@ -581,6 +508,15 @@ export default function CrewProjectsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : selectedProject ? (
+          <div className="text-center p-8 text-gray-400">
+            <FaRocket className="text-3xl text-indigo-400 animate-pulse mx-auto mb-2" />
+            Loading Expedition Details...
+          </div>
+        ) : (
+          <div className="text-center p-8 text-gray-400">
+            <p>Select an expedition to view its details.</p>
           </div>
         )}
       </div>
@@ -591,16 +527,17 @@ export default function CrewProjectsPage() {
           onSave={handleTaskSave}
           existingTask={editingTask}
           projectId={currentProjectId}
-          projectMembers={selectedProject.members}
-          projectColumns={selectedProject.columns}
+          projectMembers={selectedProject.members || []}
+          projectColumns={selectedProject.columns || []}
         />
       )}
-      {isInviteModalOpen && selectedProject && (
-        <InviteMemberModal
-          isOpen={isInviteModalOpen}
-          onClose={() => setIsInviteModalOpen(false)}
-          onInvite={handleInviteMember}
+      {isAddMemberModalOpen && selectedProject && (
+        <AddMemberModal
+          isOpen={isAddMemberModalOpen}
+          onClose={() => setIsAddMemberModalOpen(false)}
+          onAddMember={handleAddMember}
           projectName={selectedProject.name}
+          existingMembers={selectedProject.members || []}
         />
       )}
     </div>
