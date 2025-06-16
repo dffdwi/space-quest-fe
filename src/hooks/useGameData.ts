@@ -671,8 +671,11 @@ export const useGameData = (authUser: AuthUser | null) => {
     async (itemId: string) => {
       if (!playerData) return;
 
-      const item = SHOP_ITEMS_CONFIG.find((i) => i.itemId === itemId);
-      if (!item) return;
+      const item = shopItems.find((i) => i.itemId === itemId);
+      if (!item) {
+        console.error("Item tidak ditemukan di konfigurasi.");
+        return;
+      }
 
       if (playerData.credits < item.price) {
         window.showGlobalNotification?.({
@@ -685,8 +688,7 @@ export const useGameData = (authUser: AuthUser | null) => {
 
       try {
         await api.post("/shop/purchase", { itemId });
-
-        fetchGameData();
+        await fetchGameData();
 
         window.showGlobalNotification?.({
           type: "success",
@@ -704,8 +706,9 @@ export const useGameData = (authUser: AuthUser | null) => {
         });
       }
     },
-    [playerData, fetchGameData]
+    [playerData, shopItems, fetchGameData]
   );
+
   const updatePlayerProfile = useCallback(
     (newName: string, newAvatarUrl: string) => {
       updatePlayerData((prev: PlayerData) => {
@@ -732,39 +735,39 @@ export const useGameData = (authUser: AuthUser | null) => {
   );
 
   const applyTheme = useCallback(
-    (themeValue: string) => {
-      const themeItem = SHOP_ITEMS_CONFIG.find(
-        (item) => item.type === "theme" && item.value === themeValue
-      );
-      updatePlayerData((prev: PlayerData) => {
-        if (prev.activeTheme === themeValue) {
-          return {};
-        }
-        if (
-          themeValue !== "theme-dark" &&
-          themeValue !== "theme-default" &&
-          !prev.purchasedShopItemIds.includes(themeItem?.itemId || "")
-        ) {
-          window.showGlobalNotification?.({
-            type: "error",
-            title: "Theme Not Owned",
-            message: `You need to purchase the theme "${
-              themeItem?.name || themeValue
-            }" first.`,
-          });
-          return {};
-        }
+    async (themeValue: string) => {
+      try {
+        const response = await api.put("/users/profile/apply-theme", {
+          themeValue,
+        });
+        const updatedUser = response.data;
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            ...prev,
+            name: updatedUser.name,
+            avatarUrl: updatedUser.avatarUrl,
+            activeTheme: updatedUser.activeTheme,
+            activeAvatarFrameId: updatedUser.activeAvatarFrameId,
+          };
+        });
 
         window.showGlobalNotification?.({
           type: "success",
           title: "Ship Interface Updated",
-          message: `Visual theme changed to "${
-            themeItem?.name || themeValue
-          }".`,
+          message: `Visual theme changed to "${updatedUser.activeTheme}".`,
           icon: FaPalette,
         });
-        return { activeTheme: themeValue };
-      });
+      } catch (error: any) {
+        console.error("Gagal menerapkan tema:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Failed to Apply Theme",
+          message:
+            error.response?.data?.message ||
+            "Could not apply the selected theme.",
+        });
+      }
     },
     [updatePlayerData]
   );

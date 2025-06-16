@@ -103,16 +103,22 @@ export default function StarMarketPage() {
                       buttonDisabled = true;
                       actionIcon = <FaCheck className="mr-2" />;
                     } else if (isPurchased) {
-                      buttonText = "Apply";
-                      buttonClasses = "btn-secondary hover:bg-gray-600";
-                      buttonDisabled = false;
-                      actionIcon = <FaCheck className="mr-2" />;
-                    } else if (isPowerUpActive) {
-                      buttonText = "Active";
-                      buttonClasses =
-                        "btn-success opacity-70 cursor-not-allowed";
-                      buttonDisabled = true;
-                      actionIcon = <FaCheck className="mr-2" />;
+                      if (
+                        item.type === "theme" ||
+                        item.type === "avatar_frame"
+                      ) {
+                        buttonText = "Already Owned";
+                        buttonClasses =
+                          "btn-secondary opacity-60 cursor-not-allowed";
+                        buttonDisabled = true;
+                        actionIcon = <FaCheck className="mr-2" />;
+                      } else {
+                        buttonText = "Already Owned";
+                        buttonClasses =
+                          "btn-secondary opacity-60 cursor-not-allowed";
+                        buttonDisabled = true;
+                        actionIcon = <FaCheck className="mr-2" />;
+                      }
                     } else if (!canAfford) {
                       buttonText = "Your CP is not enough";
                       buttonClasses =
@@ -120,7 +126,6 @@ export default function StarMarketPage() {
                       buttonDisabled = true;
                       actionIcon = null;
                     }
-
                     return (
                       <div
                         key={item.itemId}

@@ -1,11 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  useGameData,
-  SHOP_ITEMS_CONFIG,
-  PlayerData,
-} from "@/hooks/useGameData";
+import { useGameData } from "@/hooks/useGameData";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, FormEvent } from "react";
 import {
@@ -27,36 +23,29 @@ export default function ShipSettingsPage() {
     applyTheme,
     applyAvatarFrame,
     resetGameData,
+    SHOP_ITEMS_CONFIG,
   } = useGameData(user);
   const router = useRouter();
 
   const [commanderName, setCommanderName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("");
-  const [selectedFrame, setSelectedFrame] = useState<string | null>(null);
+  const [selectedFrame, setSelectedFrame] = useState<string | null>("");
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/login");
     }
     if (playerData) {
-      setCommanderName(playerData.name);
-      setAvatarUrl(playerData.avatarUrl);
-      setSelectedTheme(playerData.activeTheme);
-      setSelectedFrame(playerData.avatarFrameId);
+      setCommanderName(playerData.name || "");
+      setAvatarUrl(playerData.avatarUrl || "");
+      setSelectedTheme(playerData.activeTheme || "theme-dark");
+      setSelectedFrame(playerData.avatarFrameId || null);
     }
   }, [authLoading, user, router, playerData]);
 
   const handleProfileSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (commanderName.trim() === "" || avatarUrl.trim() === "") {
-      window.showGlobalNotification?.({
-        type: "error",
-        title: "Invalid Input",
-        message: "Commander name and avatar URL cannot be empty.",
-      });
-      return;
-    }
     updatePlayerProfile(commanderName, avatarUrl);
   };
 
@@ -75,7 +64,7 @@ export default function ShipSettingsPage() {
   const handleResetProgress = () => {
     if (
       window.confirm(
-        "WARNING: This will erase all your game progress (XP, levels, tasks, items) and reset to default. This action cannot be undone. Are you sure you want to proceed?"
+        "WARNING: This will erase all your game progress. This action cannot be undone. Are you sure?"
       )
     ) {
       resetGameData();
@@ -147,9 +136,6 @@ export default function ShipSettingsPage() {
                 className="input-field mt-1 block w-full"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Enter a direct URL to your preferred image.
-              </p>
             </div>
             <button type="submit" className="btn btn-primary flex items-center">
               <FaSave className="mr-2" /> Update Profile
@@ -179,20 +165,18 @@ export default function ShipSettingsPage() {
                 <option value="theme-dark">Default Dark (Starlight)</option>
                 {availableThemes.map((theme) => (
                   <option
-                    key={theme.id}
+                    key={theme.itemId}
                     value={theme.value}
                     disabled={
-                      !playerData.purchasedShopItemIds.includes(theme.id) &&
-                      theme.value !== "theme-dark"
+                      theme.value !== "theme-dark" &&
+                      !playerData.purchasedShopItemIds.includes(theme.itemId)
                     }
                   >
                     {theme.name}{" "}
-                    {!playerData.purchasedShopItemIds.includes(theme.id) &&
-                    theme.value !== "theme-dark"
+                    {theme.value !== "theme-dark" &&
+                    !playerData.purchasedShopItemIds.includes(theme.itemId)
                       ? "(Locked)"
-                      : playerData.purchasedShopItemIds.includes(theme.id)
-                      ? "(Owned)"
-                      : ""}
+                      : "(Owned)"}
                   </option>
                 ))}
               </select>
@@ -213,14 +197,14 @@ export default function ShipSettingsPage() {
                 <option value="null">No Frame (Standard Issue)</option>
                 {availableFrames.map((frame) => (
                   <option
-                    key={frame.id}
+                    key={frame.itemId}
                     value={frame.value}
                     disabled={
-                      !playerData.purchasedShopItemIds.includes(frame.id)
+                      !playerData.purchasedShopItemIds.includes(frame.itemId)
                     }
                   >
                     {frame.name}{" "}
-                    {!playerData.purchasedShopItemIds.includes(frame.id)
+                    {!playerData.purchasedShopItemIds.includes(frame.itemId)
                       ? "(Locked)"
                       : "(Owned)"}
                   </option>
@@ -235,9 +219,7 @@ export default function ShipSettingsPage() {
             🚨 Danger Zone 🚨
           </h2>
           <p className="text-sm text-gray-400 mb-3">
-            Warning: Resetting your progress will erase all mission logs, XP,
-            levels, commendations, and acquired artifacts. This action cannot be
-            undone.
+            Warning: This action will erase all your game progress.
           </p>
           <button
             onClick={handleResetProgress}
