@@ -32,6 +32,7 @@ export default function DashboardPage() {
     editTask,
     updatePlayerData,
     claimMissionReward,
+    claimDailyDiscovery,
   } = useGameData(user);
   const router = useRouter();
 
@@ -296,7 +297,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div
-          onClick={handleClaimDailyDiscovery}
+          onClick={claimDailyDiscovery}
           className={`daily-discovery card p-4 text-center ${
             !playerData.dailyDiscovery.available ? "claimed" : "hover:shadow-lg"
           }`}

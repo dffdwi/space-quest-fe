@@ -358,6 +358,16 @@ export const useGameData = (authUser: AuthUser | null) => {
 
       setPlayerData(combinedData);
       console.log(combinedData);
+      if (!combinedData.dailyLogin.bonusClaimedToday) {
+        api
+          .post("/daily/check-in")
+          .then((response) => {
+            fetchGameData();
+          })
+          .catch((err) => {
+            if (err.response?.status !== 400) console.error(err);
+          });
+      }
     } catch (error) {
       console.error("Gagal mengambil data game dari server:", error);
     } finally {
@@ -627,101 +637,33 @@ export const useGameData = (authUser: AuthUser | null) => {
     };
   }, [playerData]);
 
-  const handleDailyLogin = useCallback(() => {
+  const handleDailyLogin = useCallback(async () => {
     if (!playerData) return;
-    const todayStr = new Date().toISOString().split("T")[0];
 
-    if (playerData.dailyLogin.lastLoginDate !== todayStr) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
-      const currentStreak = playerData.dailyLogin.streak || 0;
-      const newStreak =
-        playerData.dailyLogin.lastLoginDate === yesterdayStr
-          ? currentStreak + 1
-          : 1;
-      const bonusXp = 10 + newStreak * 5;
-      const bonusCredits = 5 + newStreak * 2;
+    try {
+      const response = await api.post("/daily/check-in");
+      const { bonusXp, bonusCredits, user: updatedUser } = response.data;
 
-      updatePlayerData((prevPlayerData: PlayerData) => {
-        const originalLevel = prevPlayerData.level;
-        const newXpVal = prevPlayerData.xp + bonusXp;
-        const newCreditsVal = prevPlayerData.credits + bonusCredits;
-        let newLevelVal = prevPlayerData.level;
-        let leveledUp = false;
-        while (
-          newLevelVal < XP_PER_LEVEL.length - 1 &&
-          newXpVal >= XP_PER_LEVEL[newLevelVal]
-        ) {
-          newLevelVal++;
-          leveledUp = true;
-        }
+      updatePlayerData((prev) => ({
+        ...prev,
+        ...updatedUser,
+        dailyLogin: {
+          lastLoginDate: updatedUser.lastLoginDate,
+          streak: updatedUser.loginStreak,
+          bonusClaimedToday: true,
+        },
+      }));
 
-        const earnedBadges = [...prevPlayerData.earnedBadgeIds];
-        if (newStreak >= 3 && !earnedBadges.includes("b_daily_streak_3")) {
-          earnedBadges.push("b_daily_streak_3");
-          const badge = ALL_BADGES_CONFIG.find(
-            (b) => b.badgeId === "b_daily_streak_3"
-          );
-          if (badge) {
-            const BadgeIconComponent = badge.icon
-              ? iconMap[badge.icon]
-              : undefined;
-            setTimeout(
-              () =>
-                window.showGlobalNotification?.({
-                  type: "success",
-                  title: "Commendation Earned!",
-                  message: `New insignia: ${badge.name}`,
-                  icon: BadgeIconComponent,
-                }),
-              100
-            );
-          }
-        }
-        if (leveledUp) {
-          setTimeout(
-            () =>
-              window.showGlobalNotification?.({
-                type: "quest",
-                title: "Level Up via Login Bonus!",
-                message: `Reached Command Level ${newLevelVal}!`,
-                icon: FaUserShield,
-              }),
-            50
-          );
-        }
-
-        return {
-          xp: newXpVal,
-          credits: newCreditsVal,
-          level: newLevelVal,
-          dailyLogin: {
-            lastLoginDate: todayStr,
-            streak: newStreak,
-            bonusClaimedToday: true,
-          },
-          earnedBadgeIds: earnedBadges,
-          stats: {
-            ...prevPlayerData.stats,
-            logins: prevPlayerData.stats.logins + 1,
-            currentMissionStreak: Math.max(
-              prevPlayerData.stats.currentMissionStreak,
-              newStreak
-            ),
-            longestMissionStreak: Math.max(
-              prevPlayerData.stats.longestMissionStreak,
-              newStreak
-            ),
-          },
-        };
-      });
       window.showGlobalNotification?.({
         type: "success",
-        title: "Daily Logon Bonus!",
-        message: `Streak: ${newStreak} days! +${bonusXp} XP, +${bonusCredits} CP.`,
+        title: "Daily Check-in Bonus!",
+        message: `Streak: ${updatedUser.loginStreak} days! +${bonusXp} XP, +${bonusCredits} CP.`,
         icon: FaCalendarCheck,
       });
+    } catch (error: any) {
+      if (error.response?.status !== 400) {
+        console.error("Gagal melakukan check-in harian:", error);
+      }
     }
   }, [playerData, updatePlayerData]);
 
@@ -934,6 +876,32 @@ export const useGameData = (authUser: AuthUser | null) => {
     [playerData, fetchGameData]
   );
 
+  const claimDailyDiscovery = useCallback(async () => {
+    if (!playerData) return;
+
+    try {
+      const response = await api.post("/daily/claim-discovery");
+      const { rewardCredits, rewardXp } = response.data;
+
+      fetchGameData();
+
+      window.showGlobalNotification?.({
+        type: "success",
+        title: "Supply Drop Acquired!",
+        message: `You found +${rewardCredits} CP and +${rewardXp} XP!`,
+        icon: FaGift,
+      });
+    } catch (error: any) {
+      console.error("Gagal klaim discovery:", error);
+      window.showGlobalNotification?.({
+        type: "error",
+        title: "Claim Failed",
+        message:
+          error.response?.data?.message || "Supply drop already claimed today.",
+      });
+    }
+  }, [playerData, fetchGameData]);
+
   return {
     playerData,
     isLoadingData,
@@ -952,5 +920,6 @@ export const useGameData = (authUser: AuthUser | null) => {
     claimMissionReward,
     SHOP_ITEMS_CONFIG: shopItems,
     ALL_BADGES_CONFIG: allBadges,
+    claimDailyDiscovery,
   };
 };
