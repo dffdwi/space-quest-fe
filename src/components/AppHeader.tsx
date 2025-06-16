@@ -110,7 +110,11 @@ const AppHeader = () => {
         {user ? (
           <div className="flex items-center space-x-3 md:space-x-4 mt-4 sm:mt-0 card bg-gray-800/50 border-gray-700/50 p-3 shadow-md backdrop-blur-sm">
             <img
-              src={playerData.avatarUrl}
+              src={
+                playerData.avatarUrl
+                  ? playerData.avatarUrl
+                  : "https://img.freepik.com/free-vector/cute-astronaut-riding-rocket-waving-hand-cartoon-icon-illustration-science-technology-icon-concept_138676-2130.jpg?semt=ais_hybrid&w=740"
+              }
               alt="Commander Avatar"
               className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-indigo-500 object-cover 
              ${

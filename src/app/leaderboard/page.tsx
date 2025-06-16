@@ -138,7 +138,11 @@ export default function LeaderboardPage() {
                       )}
                     </span>
                     <img
-                      src={entry.avatarUrl}
+                      src={
+                        entry.avatarUrl
+                          ? entry.avatarUrl
+                          : "https://img.freepik.com/free-vector/cute-astronaut-riding-rocket-waving-hand-cartoon-icon-illustration-science-technology-icon-concept_138676-2130.jpg?semt=ais_hybrid&w=740"
+                      }
                       alt={entry.name}
                       className={`w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 ${
                         isCurrentUser ? "border-indigo-400" : "border-gray-500"
