@@ -866,26 +866,31 @@ export const useGameData = (authUser: AuthUser | null) => {
     [updatePlayerData]
   );
 
-  const resetGameData = useCallback(() => {
-    if (authUser) {
-      const defaultData = initialPlayerDataTemplate(authUser);
-      setPlayerData(defaultData);
+  const resetGameData = useCallback(async () => {
+    if (!authUser) return;
+
+    try {
+      const response = await api.post("/user/profile/reset");
+      const resetData = response.data;
+
+      await fetchGameData();
+
       window.showGlobalNotification?.({
         type: "warning",
         title: "Game Reset!",
-        message:
-          "Your mission logs, XP, and artifacts have been reset to default values.",
+        message: "Your mission logs, XP, and artifacts have been reset.",
         icon: FaRedo,
         duration: 6000,
       });
-    } else {
+    } catch (error) {
+      console.error("Gagal mereset data:", error);
       window.showGlobalNotification?.({
         type: "error",
-        title: "Error",
-        message: "Cannot reset data. No user is logged in.",
+        title: "Reset Failed",
+        message: "Could not reset your game data on the server.",
       });
     }
-  }, [authUser, setPlayerData]);
+  }, [authUser, fetchGameData]);
 
   const claimMissionReward = useCallback(
     async (missionId: string) => {
