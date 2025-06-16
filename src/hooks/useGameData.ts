@@ -55,10 +55,10 @@ export interface PlayerMission {
 }
 
 export interface PlayerBadge {
-  id: string;
+  badgeId: string;
   name: string;
   description: string;
-  icon: React.ElementType;
+  icon: string;
   color: string;
   earnedAt?: string;
 }
@@ -134,45 +134,45 @@ const iconMap: { [key: string]: React.ElementType } = {
 
 export let ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [
   {
-    id: "b_first_mission",
+    badgeId: "b_first_mission",
     name: "First Contact",
     description: "Complete your first mission log.",
-    icon: iconMap["FaRegLightbulb"] || FaAward,
+    icon: "FaRegLightbulb",
     color: "text-yellow-400",
   },
   {
-    id: "b_explorer_initiate",
+    badgeId: "b_explorer_initiate",
     name: "Explorer Initiate",
     description: "Complete 3 mission logs.",
-    icon: iconMap["FaSpaceShuttle"] || FaAward,
+    icon: "FaSpaceShuttle",
     color: "text-sky-400",
   },
   {
-    id: "b_diligent_commander",
+    badgeId: "b_diligent_commander",
     name: "Diligent Commander",
     description: "Complete 10 mission logs.",
-    icon: iconMap["FaUserAstronaut"] || FaAward,
+    icon: "FaUserAstronaut",
     color: "text-purple-400",
   },
   {
-    id: "b_level_5_cadet",
+    badgeId: "b_level_5_cadet",
     name: "Cadet Level 5",
     description: "Reach Level 5.",
-    icon: iconMap["FaGraduationCap"] || FaAward,
+    icon: "FaGraduationCap",
     color: "text-indigo-400",
   },
   {
-    id: "b_daily_streak_3",
+    badgeId: "b_daily_streak_3",
     name: "Consistent Voyager (3 Days)",
     description: "Log in 3 days in a row.",
-    icon: iconMap["FaCalendarCheck"] || FaAward,
+    icon: "FaCalendarCheck",
     color: "text-teal-400",
   },
   {
-    id: "b_credits_collector",
+    badgeId: "b_credits_collector",
     name: "Credits Collector",
     description: "Accumulate 500 Cosmic Credits.",
-    icon: iconMap["FaCoins"] || FaAward,
+    icon: "FaCoins",
     color: "text-amber-400",
   },
 ];
@@ -661,16 +661,19 @@ export const useGameData = (authUser: AuthUser | null) => {
         if (newStreak >= 3 && !earnedBadges.includes("b_daily_streak_3")) {
           earnedBadges.push("b_daily_streak_3");
           const badge = ALL_BADGES_CONFIG.find(
-            (b) => b.id === "b_daily_streak_3"
+            (b) => b.badgeId === "b_daily_streak_3"
           );
           if (badge) {
+            const BadgeIconComponent = badge.icon
+              ? iconMap[badge.icon]
+              : undefined;
             setTimeout(
               () =>
                 window.showGlobalNotification?.({
                   type: "success",
                   title: "Commendation Earned!",
                   message: `New insignia: ${badge.name}`,
-                  icon: badge.icon,
+                  icon: BadgeIconComponent,
                 }),
               100
             );

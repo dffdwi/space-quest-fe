@@ -158,7 +158,7 @@ export default function DashboardPage() {
       ? playerData.earnedBadgeIds[playerData.earnedBadgeIds.length - 1]
       : null;
   const latestBadge = latestBadgeId
-    ? ALL_BADGES_CONFIG.find((b) => b.id === latestBadgeId)
+    ? ALL_BADGES_CONFIG.find((b) => b.badgeId === latestBadgeId)
     : null;
   const BadgeIcon = latestBadge?.icon || FaAward;
 
