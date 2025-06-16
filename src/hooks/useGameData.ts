@@ -773,40 +773,39 @@ export const useGameData = (authUser: AuthUser | null) => {
   );
 
   const applyAvatarFrame = useCallback(
-    (frameValue: string | null) => {
-      const frameItem = SHOP_ITEMS_CONFIG.find(
-        (item) => item.type === "avatar_frame" && item.value === frameValue
-      );
-      updatePlayerData((prev: PlayerData) => {
-        if (prev.avatarFrameId === frameValue) {
-          return {};
-        }
-        if (
-          frameValue !== null &&
-          !prev.purchasedShopItemIds.includes(frameItem?.itemId || "")
-        ) {
-          window.showGlobalNotification?.({
-            type: "error",
-            title: "Frame Not Owned",
-            message: `You need to purchase the frame "${
-              frameItem?.name || frameValue
-            }" first.`,
-          });
-          return {};
-        }
+    async (frameValue: string | null) => {
+      try {
+        const response = await api.put("/users/profile/apply-frame", {
+          frameValue,
+        });
+        const updatedUser = response.data;
+
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            ...prev,
+            activeAvatarFrameId: updatedUser.activeAvatarFrameId,
+          };
+        });
 
         window.showGlobalNotification?.({
           type: "success",
           title: "Avatar Frame Updated",
           message: frameValue
-            ? `Commander avatar frame set to "${
-                frameItem?.name || frameValue
-              }".`
+            ? `Commander avatar frame has been set.`
             : "Avatar frame has been reset.",
           icon: FaStar,
         });
-        return { avatarFrameId: frameValue };
-      });
+      } catch (error: any) {
+        console.error("Gagal menerapkan frame:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Failed to Apply Frame",
+          message:
+            error.response?.data?.message ||
+            "Could not apply the selected frame.",
+        });
+      }
     },
     [updatePlayerData]
   );
