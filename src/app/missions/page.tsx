@@ -16,8 +16,14 @@ import {
 
 export default function Missions() {
   const { user, isLoading: authLoading } = useAuth();
-  const { playerData, isLoadingData, completeTask, addTask, editTask } =
-    useGameData(user);
+  const {
+    playerData,
+    isLoadingData,
+    completeTask,
+    addTask,
+    editTask,
+    claimMissionReward,
+  } = useGameData(user);
   const router = useRouter();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,7 +71,7 @@ export default function Missions() {
   const formatDate = (dateString?: string) => {
     if (!dateString) return "No Deadline";
     try {
-      return new Date(dateString).toLocaleDateString("en-ID");
+      return new Date(dateString).toLocaleDateString("en-CA");
     } catch {
       return "Invalid Date";
     }

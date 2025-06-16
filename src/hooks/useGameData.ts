@@ -885,91 +885,45 @@ export const useGameData = (authUser: AuthUser | null) => {
   }, [authUser, setPlayerData]);
 
   const claimMissionReward = useCallback(
-    (missionId: string) => {
-      updatePlayerData((prev: PlayerData) => {
-        const mission = prev.missions.find((m) => m.missionId === missionId);
+    async (missionId: string) => {
+      if (!playerData) return;
 
-        if (
-          !mission ||
-          mission.currentProgress < mission.target ||
-          mission.isClaimed
-        ) {
-          window.showGlobalNotification?.({
-            type: "error",
-            title: "Claim Failed",
-            message: mission?.isClaimed
-              ? "Reward for this objective has already been claimed."
-              : "Objective not yet completed.",
-          });
-          return {};
-        }
+      try {
+        const response = await api.post(`/missions/${missionId}/claim`);
+        const { eventResult } = response.data;
 
-        const rewardXp = mission.rewardXp || 0;
-        const rewardCredits = mission.rewardCredits || 0;
-        const rewardBadgeId = mission.rewardBadgeId;
-
-        let newXp = prev.xp + rewardXp;
-        let newCredits = prev.credits + rewardCredits;
-        let newEarnedBadgeIds = [...prev.earnedBadgeIds];
-        let newLevel = prev.level;
-        let leveledUp = false;
-
-        while (
-          newLevel < XP_PER_LEVEL.length - 1 &&
-          newXp >= XP_PER_LEVEL[newLevel]
-        ) {
-          newLevel++;
-          leveledUp = true;
-        }
-
-        if (rewardBadgeId && !newEarnedBadgeIds.includes(rewardBadgeId)) {
-          newEarnedBadgeIds.push(rewardBadgeId);
-          const badge = ALL_BADGES_CONFIG.find((b) => b.id === rewardBadgeId);
-          if (badge) {
-            window.showGlobalNotification?.({
-              type: "success",
-              title: "Commendation Earned!",
-              message: `New insignia acquired: ${badge.name}`,
-              icon: badge.icon,
-            });
-          }
-        }
-
-        window.showGlobalNotification?.({
-          type: "success",
-          title: "Reward Claimed!",
-          message: `+${rewardXp} XP & +${rewardCredits} CP for completing "${mission.title}"!`,
-          icon: FaTrophy,
-        });
-
-        if (leveledUp) {
+        if (eventResult.leveledUp) {
           window.showGlobalNotification?.({
             type: "quest",
             title: "Promotion!",
-            message: `Your reward propelled you to Level ${newLevel}!`,
+            message: `Your reward propelled you to Level ${eventResult.leveledUp.to}!`,
             icon: FaUserShield,
           });
         }
 
-        const updatedMissions = prev.missions.map((m) =>
-          m.missionId === missionId ? { ...m, isClaimed: true } : m
-        );
+        if (eventResult.badgesEarned && eventResult.badgesEarned.length > 0) {
+          eventResult.badgesEarned.forEach((badge: PlayerBadge) => {
+            window.showGlobalNotification?.({
+              type: "success",
+              title: "Commendation Earned!",
+              message: `New insignia acquired: ${badge.name}`,
+              icon: FaAward,
+            });
+          });
+        }
 
-        return {
-          xp: newXp,
-          credits: newCredits,
-          level: newLevel,
-          missions: updatedMissions,
-          earnedBadgeIds: newEarnedBadgeIds,
-          stats: {
-            ...prev.stats,
-            totalXpEarned: prev.stats.totalXpEarned + rewardXp,
-            totalCreditsEarned: prev.stats.totalCreditsEarned + rewardCredits,
-          },
-        };
-      });
+        fetchGameData();
+      } catch (error: any) {
+        console.error("Gagal klaim hadiah misi:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Claim Failed",
+          message:
+            error.response?.data?.message || "Could not claim mission reward.",
+        });
+      }
     },
-    [updatePlayerData]
+    [playerData, fetchGameData]
   );
 
   return {
