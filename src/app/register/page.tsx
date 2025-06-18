@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
+import { FaUserPlus } from "react-icons/fa";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -23,112 +24,121 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
     setError(null);
     setIsLoading(true);
 
     try {
-      const response = await api.post("/auth/register", {
-        name,
-        email,
-        password,
-      });
-      console.log("Registrasi berhasil:", response.data);
+      await api.post("/auth/register", { name, email, password });
       router.push("/login?registered=true");
     } catch (err: any) {
       setIsLoading(false);
       const apiError =
-        err.response?.data?.message || "Registrasi gagal. Silakan coba lagi.";
+        err.response?.data?.message || "Registration failed. Please try again.";
       setError(Array.isArray(apiError) ? apiError.join(", ") : apiError);
-      console.error("Error registrasi:", err);
     }
   };
 
   if (authUser) {
-    return <div className="text-center p-10">Mengarahkan...</div>;
+    return (
+      <div className="auth-container">
+        <p className="text-white">Redirecting...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)] px-4">
-      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg">
-        <h1 className="text-3xl font-bold mb-8 text-center text-gray-800">
-          Buat Akun
-        </h1>
-
-        {error && (
-          <p className="text-red-600 text-sm bg-red-100 p-3 rounded-md mb-4 text-center">
-            {error}
+    <div className="auth-container">
+      <div className="w-full max-w-md mx-auto">
+        <div className="text-center mb-8">
+          <FaUserPlus className="mx-auto text-5xl text-indigo-400 mb-2" />
+          <h1 className="text-4xl font-bold text-white tracking-tight">
+            Join the Quest
+          </h1>
+          <p className="text-gray-400">
+            Create your commander profile to begin.
           </p>
-        )}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label
-              className="block text-sm font-medium text-gray-700 mb-1"
-              htmlFor="name"
+        <div className="auth-card">
+          {error && (
+            <p className="text-red-400 text-sm bg-red-900/50 p-3 rounded-md mb-4 text-center">
+              {error}
+            </p>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label
+                className="block text-sm font-medium text-gray-300 mb-2"
+                htmlFor="name"
+              >
+                Commander Name (Optional)
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="auth-input"
+                placeholder="e.g., Commander Alex"
+              />
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-medium text-gray-300 mb-2"
+                htmlFor="email"
+              >
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="auth-input"
+                placeholder="your-email@domain.com"
+              />
+            </div>
+
+            <div>
+              <label
+                className="block text-sm font-medium text-gray-300 mb-2"
+                htmlFor="password"
+              >
+                Password (min. 8 characters)
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="auth-input"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button type="submit" disabled={isLoading} className="auth-btn">
+              {isLoading ? "Registering..." : "Create Account"}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-gray-400 mt-6">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="font-medium text-indigo-400 hover:text-indigo-300"
             >
-              Nama (Opsional)
-            </label>
-            <input
-              type="text"
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
-            />
-          </div>
-
-          <div>
-            <label
-              className="block text-sm font-medium text-gray-700 mb-1"
-              htmlFor="email"
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
-            />
-          </div>
-
-          <div>
-            <label
-              className="block text-sm font-medium text-gray-700 mb-1"
-              htmlFor="password"
-            >
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-70"
-          >
-            {isLoading ? "Mendaftar..." : "Register"}
-          </button>
-        </form>
-        <p className="text-center text-sm text-gray-600 mt-6">
-          Sudah punya akun?{" "}
-          <Link
-            href="/login"
-            className="font-medium text-blue-600 hover:text-blue-500"
-          >
-            Login di sini
-          </Link>
-        </p>
+              Log In
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
