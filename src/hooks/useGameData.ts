@@ -710,17 +710,22 @@ export const useGameData = (authUser: AuthUser | null) => {
   );
 
   const updatePlayerProfile = useCallback(
-    (newName: string, newAvatarUrl: string) => {
-      updatePlayerData((prev: PlayerData) => {
-        let nameChanged = prev.name !== newName && newName.trim() !== "";
-        let avatarChanged =
-          prev.avatarUrl !== newAvatarUrl && newAvatarUrl.trim() !== "";
+    async (newName: string, newAvatarUrl: string) => {
+      try {
+        const response = await api.put("/users/profile", {
+          name: newName,
+          avatarUrl: newAvatarUrl,
+        });
+        const updatedUser = response.data;
 
-        if (!nameChanged && !avatarChanged) return {};
-
-        const updates: Partial<PlayerData> = {};
-        if (nameChanged) updates.name = newName.trim();
-        if (avatarChanged) updates.avatarUrl = newAvatarUrl.trim();
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            ...prev,
+            name: updatedUser.name,
+            avatarUrl: updatedUser.avatarUrl,
+          };
+        });
 
         window.showGlobalNotification?.({
           type: "success",
@@ -728,8 +733,14 @@ export const useGameData = (authUser: AuthUser | null) => {
           message: "Your commander profile has been successfully updated.",
           icon: FaUserAstronaut,
         });
-        return updates;
-      });
+      } catch (error: any) {
+        console.error("Gagal update profil:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Update Failed",
+          message: error.response?.data?.message || "Could not update profile.",
+        });
+      }
     },
     [updatePlayerData]
   );
