@@ -30,7 +30,7 @@ export default function StarMapPage() {
     if (!playerData?.tasks) return [];
 
     return playerData.tasks.map((task) => ({
-      id: task.id,
+      id: task.taskId,
       title: task.title,
       date: task.dueDate,
       allDay: true,
@@ -63,7 +63,7 @@ export default function StarMapPage() {
   };
 
   const handleTaskSave = (
-    taskData: Omit<PlayerTask, "id" | "completed" | "completedAt">,
+    taskData: Omit<PlayerTask, "taskId" | "completed" | "completedAt">,
     id?: string
   ) => {
     if (id) {

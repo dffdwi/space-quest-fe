@@ -9,7 +9,7 @@ interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (
-    taskData: Omit<PlayerTask, "id" | "completed" | "completedAt">,
+    taskData: Omit<PlayerTask, "taskId" | "completed" | "completedAt">,
     id?: string
   ) => void;
   existingTask?: PlayerTask | null;
@@ -55,14 +55,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           setAssignedTo(existingTask.assignedTo || null);
           setStatus(
             existingTask.status ||
-              (projectColumns.length > 0 ? projectColumns[0].id : "todo")
+              (projectColumns.length > 0 ? projectColumns[0].columnId : "todo")
           );
-        } else {
-          setAssignedTo(null);
-          setStatus("todo");
         }
       } else {
-        // Reset form untuk tugas baru
         setTitle("");
         setDescription("");
         setDueDate(defaultDate || "");
@@ -70,10 +66,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         setCredits(5);
         setCategory("");
         setAssignedTo(null);
-        setStatus(projectColumns.length > 0 ? projectColumns[0].id : "todo");
+        setStatus(
+          projectColumns.length > 0 ? projectColumns[0].columnId : "todo"
+        );
       }
     }
-  }, [existingTask, isOpen, projectId, projectColumns, defaultDate]);
+  }, [existingTask, isOpen, defaultDate]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -93,10 +91,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         assignedTo: projectId ? assignedTo || null : null,
         status: projectId
           ? status ||
-            (projectColumns.length > 0 ? projectColumns[0].id : "todo")
+            (projectColumns.length > 0 ? projectColumns[0].columnId : "todo")
           : "todo",
       },
-      existingTask?.id
+      existingTask?.taskId
     );
   };
 
@@ -240,7 +238,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   >
                     <option value="">-- Unassigned --</option>
                     {projectMembers.map((member) => (
-                      <option key={member.id} value={member.id}>
+                      <option key={member.userId} value={member.userId}>
                         {member.name}
                       </option>
                     ))}
@@ -260,7 +258,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                     className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
                   >
                     {projectColumns.map((col) => (
-                      <option key={col.id} value={col.id}>
+                      <option key={col.columnId} value={col.columnId}>
                         {col.title}
                       </option>
                     ))}

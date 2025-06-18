@@ -32,6 +32,7 @@ export default function DashboardPage() {
     editTask,
     updatePlayerData,
     claimMissionReward,
+    claimDailyDiscovery,
   } = useGameData(user);
   const router = useRouter();
 
@@ -50,7 +51,7 @@ export default function DashboardPage() {
   };
 
   const handleTaskSave = (
-    taskData: Omit<PlayerTask, "id" | "completed" | "completedAt">,
+    taskData: Omit<PlayerTask, "taskId" | "completed" | "completedAt">,
     id?: string
   ) => {
     if (id) {
@@ -121,13 +122,26 @@ export default function DashboardPage() {
     );
   }
 
+  const today = new Date();
+  const startOfDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+  const endOfDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 1
+  );
+
   const tasksToday = playerData.tasks
-    .filter(
-      (t) =>
-        !t.completed &&
-        t.dueDate === new Date().toISOString().split("T")[0] &&
-        !t.projectId
-    )
+    .filter((t) => {
+      if (!t.dueDate || t.completed || t.projectId) {
+        return false;
+      }
+      const taskDueDate = new Date(t.dueDate);
+      return taskDueDate >= startOfDay && taskDueDate < endOfDay;
+    })
     .slice(0, 3);
   const getRandomSpaceTip = () => {
     const tips = [
@@ -145,7 +159,7 @@ export default function DashboardPage() {
       ? playerData.earnedBadgeIds[playerData.earnedBadgeIds.length - 1]
       : null;
   const latestBadge = latestBadgeId
-    ? ALL_BADGES_CONFIG.find((b) => b.id === latestBadgeId)
+    ? ALL_BADGES_CONFIG.find((b) => b.badgeId === latestBadgeId)
     : null;
   const BadgeIcon = latestBadge?.icon || FaAward;
 
@@ -167,14 +181,14 @@ export default function DashboardPage() {
           {tasksToday.length > 0 ? (
             tasksToday.map((task) => (
               <div
-                key={task.id}
+                key={task.taskId}
                 className="task-item-bg flex items-center justify-between p-3.5 bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 transition-all"
               >
                 <div className="flex items-center">
                   <input
                     type="checkbox"
                     checked={task.completed}
-                    onChange={() => completeTask(task.id)}
+                    onChange={() => completeTask(task.taskId)}
                     className="form-checkbox h-5 w-5 text-purple-400 rounded focus:ring-purple-500 focus:ring-offset-gray-800 mr-3 cursor-pointer bg-gray-800 border-gray-600"
                   />
                   <div>
@@ -215,7 +229,7 @@ export default function DashboardPage() {
 
               return (
                 <div
-                  key={mission.id}
+                  key={mission.missionId}
                   className={`p-4 rounded-lg shadow-sm transition-opacity ${
                     isClaimed
                       ? "bg-gray-700/50 opacity-60"
@@ -223,8 +237,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   <div className="flex justify-between items-start">
-                    <div className="flex items-center mb-2">
-                      <FaBookOpen className="text-indigo-400 mr-3 text-xl" />
+                    <div className="flex-grow">
                       <h3
                         className={`font-semibold text-lg ${
                           isClaimed ? "text-gray-400" : "text-indigo-300"
@@ -232,20 +245,20 @@ export default function DashboardPage() {
                       >
                         {mission.title}
                       </h3>
+                      <p
+                        className={`text-sm mt-1 mb-3 ${
+                          isClaimed ? "text-gray-500" : "text-gray-300"
+                        }`}
+                      >
+                        {mission.description}
+                      </p>
                     </div>
                     {isClaimed && (
-                      <span className="text-xs font-bold text-green-400 bg-green-900/50 px-2 py-1 rounded-full flex items-center">
+                      <span className="text-xs font-bold text-green-400 bg-green-900/50 px-2 py-1 rounded-full flex items-center ml-2">
                         <FaCheckCircle className="mr-1.5" /> CLAIMED
                       </span>
                     )}
                   </div>
-                  <p
-                    className={`text-sm mb-3 ${
-                      isClaimed ? "text-gray-500" : "text-gray-300"
-                    }`}
-                  >
-                    {mission.description}
-                  </p>
                   <div className="w-full h-2.5 bg-gray-600 rounded-full mb-1 overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-500"
@@ -264,7 +277,7 @@ export default function DashboardPage() {
 
                     {isCompleted && !isClaimed && (
                       <button
-                        onClick={() => claimMissionReward(mission.id)}
+                        onClick={() => claimMissionReward(mission.missionId)}
                         className="btn btn-warning text-xs !py-1 !px-3 animate-pulse"
                       >
                         <FaTrophy className="mr-1.5" /> Claim Reward
@@ -284,7 +297,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div
-          onClick={handleClaimDailyDiscovery}
+          onClick={claimDailyDiscovery}
           className={`daily-discovery card p-4 text-center ${
             !playerData.dailyDiscovery.available ? "claimed" : "hover:shadow-lg"
           }`}

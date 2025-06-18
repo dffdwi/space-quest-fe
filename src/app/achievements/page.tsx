@@ -1,18 +1,15 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  useGameData,
-  ALL_BADGES_CONFIG,
-  PlayerBadge,
-} from "@/hooks/useGameData";
+import { useGameData } from "@/hooks/useGameData";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { FaShieldAlt, FaLock, FaRocket, FaAward } from "react-icons/fa";
+import { FaShieldAlt, FaLock, FaRocket } from "react-icons/fa";
+import IconFactory from "@/components/IconFactory";
 
 export default function AchievementsPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { playerData, isLoadingData } = useGameData(user);
+  const { playerData, isLoadingData, ALL_BADGES_CONFIG } = useGameData(user);
   const router = useRouter();
 
   useEffect(() => {
@@ -51,12 +48,11 @@ export default function AchievementsPage() {
         {ALL_BADGES_CONFIG.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6">
             {ALL_BADGES_CONFIG.map((badgeConfig) => {
-              const isEarned = earnedBadgeIdsSet.has(badgeConfig.id);
-              const BadgeIcon = badgeConfig.icon || FaAward; // Fallback icon
+              const isEarned = earnedBadgeIdsSet.has(badgeConfig.badgeId);
 
               return (
                 <div
-                  key={badgeConfig.id}
+                  key={badgeConfig.badgeId}
                   className={`card p-5 rounded-xl text-center transition-all duration-300 ease-in-out
                                ${
                                  isEarned
@@ -70,7 +66,8 @@ export default function AchievementsPage() {
                   }
                 >
                   <div className="relative mb-4">
-                    <BadgeIcon
+                    <IconFactory
+                      iconName={badgeConfig.icon}
                       className={`mx-auto text-5xl md:text-6xl 
                                   ${
                                     isEarned

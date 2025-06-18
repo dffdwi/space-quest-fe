@@ -10,6 +10,7 @@ import GlobalNotification, {
   NotificationMessage,
 } from "@/components/GlobalNotification";
 import { useState, useEffect, ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,43 +27,34 @@ interface AppBodyProps {
 function AppBody({ children }: AppBodyProps) {
   const { user } = useAuth();
   const { playerData, isLoadingData: isGameDataLoading } = useGameData(user);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isGameDataLoading && playerData) {
       const themeToApply = playerData.activeTheme || "theme-dark";
       const body = document.body;
 
-      const currentClasses = Array.from(body.classList);
-      const themeClassesToRemove: string[] = [];
-
-      currentClasses.forEach((cls) => {
-        if (
-          cls.startsWith("theme-") ||
-          cls === "bg-gray-900" ||
-          cls === "text-gray-100" ||
-          cls === "bg-gray-100" ||
-          cls === "text-gray-800"
-        ) {
-          if (cls !== inter.className) {
-            themeClassesToRemove.push(cls);
-          }
-        }
-      });
-
-      if (themeClassesToRemove.length > 0) {
-        body.classList.remove(...themeClassesToRemove);
-      }
+      body.className = body.className.replace(/theme-\S+/g, "");
 
       body.classList.add(themeToApply);
-      if (themeToApply.includes("dark") || themeToApply === "theme-default") {
-        body.classList.add("bg-gray-900", "text-gray-100");
-      } else {
-        body.classList.add("bg-gray-100", "text-gray-800");
-      }
     }
-  }, [playerData, isGameDataLoading]); 
+  }, [playerData, isGameDataLoading]);
 
-  return <>{children}</>;
+  const isAuthPage = pathname === "/login" || pathname === "/register";
+
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <Sidebar />
+      <main className="flex-1 overflow-y-auto no-scrollbar">
+        <AppHeader />
+        <div className="p-6 md:p-8">{children}</div>
+      </main>
+    </div>
+  );
 }
 
 export default function RootLayout({
@@ -106,19 +98,11 @@ export default function RootLayout({
         className={`${inter.className} theme-dark bg-gray-900 text-gray-100`}
       >
         <AuthProvider>
-          <AppBody>
-            <div className="flex h-screen overflow-hidden">
-              <Sidebar />
-              <main className="flex-1 overflow-y-auto no-scrollbar">
-                <AppHeader />
-                <div className="p-6 md:p-8">{children}</div>
-              </main>
-            </div>
-            <GlobalNotification
-              notification={notification}
-              onDismiss={handleDismissNotification}
-            />
-          </AppBody>
+          <AppBody>{children}</AppBody>
+          <GlobalNotification
+            notification={notification}
+            onDismiss={handleDismissNotification}
+          />
         </AuthProvider>
       </body>
     </html>

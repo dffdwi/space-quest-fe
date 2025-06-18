@@ -3,11 +3,12 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useGameData, PlayerData } from "@/hooks/useGameData";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { FaCrown, FaRocket, FaUserShield, FaMedal } from "react-icons/fa";
+import api from "@/lib/api";
 
-interface LeaderboardEntry extends Partial<PlayerData> {
-  id: string;
+interface LeaderboardEntry {
+  userId: string;
   name: string;
   avatarUrl: string;
   level: number;
@@ -15,48 +16,15 @@ interface LeaderboardEntry extends Partial<PlayerData> {
   rank?: number;
 }
 
-const dummyLeaderboardData: Omit<LeaderboardEntry, "rank" | "id">[] = [
-  {
-    name: "Commander Valerius",
-    level: 10,
-    xp: 10500,
-    avatarUrl:
-      "https://ui-avatars.com/api/?name=CV&background=FF8C00&color=fff&size=48",
-  },
-  {
-    name: "Captain Eva Rostova",
-    level: 9,
-    xp: 8800,
-    avatarUrl:
-      "https://ui-avatars.com/api/?name=ER&background=4682B4&color=fff&size=48",
-  },
-  {
-    name: "Ace Pilot Jax",
-    level: 9,
-    xp: 8750,
-    avatarUrl:
-      "https://ui-avatars.com/api/?name=AJ&background=32CD32&color=fff&size=48",
-  },
-  {
-    name: "Dr. Aris Thorne",
-    level: 7,
-    xp: 5200,
-    avatarUrl:
-      "https://ui-avatars.com/api/?name=AT&background=8A2BE2&color=fff&size=48",
-  },
-  {
-    name: "Mara 'Shadow' Vex",
-    level: 6,
-    xp: 4100,
-    avatarUrl:
-      "https://ui-avatars.com/api/?name=MV&background=A9A9A9&color=fff&size=48",
-  },
-];
-
 export default function LeaderboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { playerData, isLoadingData } = useGameData(user);
   const router = useRouter();
+
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>(
+    []
+  );
+  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -64,39 +32,48 @@ export default function LeaderboardPage() {
     }
   }, [authLoading, user, router]);
 
-  const leaderboardEntries = useMemo(() => {
-    if (!playerData) return [];
-
-    const currentUserEntry: LeaderboardEntry = {
-      id: String(playerData.id),
-      name: `${playerData.name} (You)`,
-      avatarUrl: playerData.avatarUrl,
-      level: playerData.level,
-      xp: playerData.xp,
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      setIsLeaderboardLoading(true);
+      try {
+        const response = await api.get("/leaderboard");
+        const rankedData = response.data.map((entry: any, index: number) => ({
+          ...entry,
+          rank: index + 1,
+        }));
+        setLeaderboardData(rankedData);
+      } catch (error) {
+        console.error("Gagal mengambil data leaderboard:", error);
+      } finally {
+        setIsLeaderboardLoading(false);
+      }
     };
 
-    const combinedData: LeaderboardEntry[] = [
-      ...dummyLeaderboardData.map((entry, index) => ({
-        ...entry,
-        id: `dummy-${index}-${entry.name.replace(/\s+/g, "")}`,
-      })),
-      currentUserEntry,
-    ];
+    if (user) {
+      fetchLeaderboard();
+    }
+  }, [user]);
 
-    combinedData.sort((a, b) => {
-      if (b.xp !== a.xp) {
-        return b.xp - a.xp;
-      }
-      return b.level - a.level;
-    });
+  const leaderboardEntries = useMemo(() => {
+    if (!playerData || leaderboardData.length === 0) return [];
 
-    return combinedData.map((entry, index) => ({
-      ...entry,
-      rank: index + 1,
-    }));
-  }, [playerData]);
+    const isPlayerInTopList = leaderboardData.some(
+      (entry) => entry.userId === playerData.id
+    );
 
-  if (authLoading || isLoadingData || !playerData) {
+    if (!isPlayerInTopList) {
+      const playerEntry = {
+        ...playerData,
+        userId: playerData.id.toString(),
+        rank: "...",
+      };
+      return [...leaderboardData, playerEntry];
+    }
+
+    return leaderboardData;
+  }, [playerData, leaderboardData]);
+
+  if (authLoading || isLoadingData || isLeaderboardLoading || !playerData) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
         <FaRocket className="text-5xl text-indigo-400 animate-pulse" />
@@ -127,19 +104,19 @@ export default function LeaderboardPage() {
         {leaderboardEntries.length > 0 ? (
           <div className="space-y-3">
             {leaderboardEntries.map((entry, index) => {
-              const isCurrentUser = entry.id === String(playerData.id);
+              const isCurrentUser = entry.userId === String(playerData.id);
               const RankIcon =
-                entry.rank && entry.rank <= 3
+                entry.rank && typeof entry.rank === "number" && entry.rank <= 3
                   ? rankIcons[entry.rank - 1]
                   : null;
               const rankColor =
-                entry.rank && entry.rank <= 3
+                entry.rank && typeof entry.rank === "number" && entry.rank <= 3
                   ? rankColors[entry.rank - 1]
                   : "text-gray-400";
 
               return (
                 <div
-                  key={entry.id}
+                  key={entry.userId}
                   className={`flex items-center justify-between p-3 md:p-4 rounded-lg shadow-sm transition-all duration-200
                                ${
                                  isCurrentUser
@@ -161,7 +138,11 @@ export default function LeaderboardPage() {
                       )}
                     </span>
                     <img
-                      src={entry.avatarUrl}
+                      src={
+                        entry.avatarUrl
+                          ? entry.avatarUrl
+                          : "https://img.freepik.com/free-vector/cute-astronaut-riding-rocket-waving-hand-cartoon-icon-illustration-science-technology-icon-concept_138676-2130.jpg?semt=ais_hybrid&w=740"
+                      }
                       alt={entry.name}
                       className={`w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 ${
                         isCurrentUser ? "border-indigo-400" : "border-gray-500"
@@ -173,7 +154,7 @@ export default function LeaderboardPage() {
                           isCurrentUser ? "text-indigo-300" : "text-gray-200"
                         }`}
                       >
-                        {entry.name}
+                        {isCurrentUser ? `${entry.name} (You)` : entry.name}
                       </span>
                       <p
                         className={`text-xs ${

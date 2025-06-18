@@ -1,14 +1,16 @@
 "use client";
 
+import IconFactory from "@/components/IconFactory";
 import { useAuth } from "@/contexts/AuthContext";
-import { useGameData, SHOP_ITEMS_CONFIG, ShopItem } from "@/hooks/useGameData";
+import { useGameData, ShopItem } from "@/hooks/useGameData";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { JSX, useEffect } from "react";
 import { FaStore, FaCoins, FaCheck, FaRocket, FaGift } from "react-icons/fa";
 
 export default function StarMarketPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { playerData, isLoadingData, purchaseShopItem } = useGameData(user);
+  const { playerData, isLoadingData, purchaseShopItem, SHOP_ITEMS_CONFIG } =
+    useGameData(user);
   const router = useRouter();
 
   useEffect(() => {
@@ -31,42 +33,14 @@ export default function StarMarketPage() {
   const purchasedIds = new Set(playerData.purchasedShopItemIds);
   const activeThemeId = SHOP_ITEMS_CONFIG.find(
     (item) => item.type === "theme" && item.value === playerData.activeTheme
-  )?.id;
+  )?.itemId;
   const activeFrameId = SHOP_ITEMS_CONFIG.find(
     (item) =>
       item.type === "avatar_frame" && item.value === playerData.avatarFrameId
-  )?.id;
+  )?.itemId;
 
   const handlePurchase = (item: ShopItem) => {
-    if (!playerData) return;
-
-    if (item.type !== "power_up" && purchasedIds.has(item.id)) {
-      if (item.type === "theme" && playerData.activeTheme !== item.value) {
-        purchaseShopItem(item.id);
-      } else if (
-        item.type === "avatar_frame" &&
-        playerData.avatarFrameId !== item.value
-      ) {
-        purchaseShopItem(item.id);
-      } else {
-        window.showGlobalNotification?.({
-          type: "info",
-          title: "Already Equipped",
-          message: `"${item.name}" is already active or owned.`,
-        });
-      }
-      return;
-    }
-
-    if (playerData.credits < item.price) {
-      window.showGlobalNotification?.({
-        type: "error",
-        title: "Insufficient Credits!",
-        message: `Not enough Cosmic Points for ${item.name}.`,
-      });
-      return;
-    }
-    purchaseShopItem(item.id);
+    purchaseShopItem(item.itemId);
   };
 
   return (
@@ -104,11 +78,12 @@ export default function StarMarketPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6">
                   {itemsInCategory.map((item) => {
                     const isPurchased =
-                      item.type !== "power_up" && purchasedIds.has(item.id);
+                      item.type !== "power_up" && purchasedIds.has(item.itemId);
                     const isActive =
-                      (item.type === "theme" && item.id === activeThemeId) ||
+                      (item.type === "theme" &&
+                        item.itemId === activeThemeId) ||
                       (item.type === "avatar_frame" &&
-                        item.id === activeFrameId);
+                        item.itemId === activeFrameId);
                     const isPowerUpActive =
                       item.type === "power_up" &&
                       playerData.activePowerUps?.[item.value]?.active;
@@ -116,11 +91,11 @@ export default function StarMarketPage() {
                     const ItemIcon = item.icon || FaGift;
 
                     let buttonText = `${item.price} CP`;
-                    let buttonDisabled = !canAfford;
-                    let buttonClasses = canAfford
-                      ? "btn-primary hover:bg-indigo-500"
-                      : "btn-secondary opacity-50 cursor-not-allowed";
-                    let actionIcon = <FaCoins className="mr-2" />;
+                    let buttonDisabled = false;
+                    let buttonClasses = "btn-primary hover:bg-indigo-500";
+                    let actionIcon: JSX.Element | null = (
+                      <FaCoins className="mr-2" />
+                    );
 
                     if (isActive) {
                       buttonText = "Equipped";
@@ -128,39 +103,51 @@ export default function StarMarketPage() {
                       buttonDisabled = true;
                       actionIcon = <FaCheck className="mr-2" />;
                     } else if (isPurchased) {
-                      buttonText = "Apply";
-                      buttonClasses = "btn-secondary hover:bg-gray-600";
-                      buttonDisabled = false;
-                      actionIcon = <FaCheck className="mr-2" />;
-                    } else if (isPowerUpActive) {
-                      buttonText = "Active";
+                      if (
+                        item.type === "theme" ||
+                        item.type === "avatar_frame"
+                      ) {
+                        buttonText = "Already Owned";
+                        buttonClasses =
+                          "btn-secondary opacity-60 cursor-not-allowed";
+                        buttonDisabled = true;
+                        actionIcon = <FaCheck className="mr-2" />;
+                      } else {
+                        buttonText = "Already Owned";
+                        buttonClasses =
+                          "btn-secondary opacity-60 cursor-not-allowed";
+                        buttonDisabled = true;
+                        actionIcon = <FaCheck className="mr-2" />;
+                      }
+                    } else if (!canAfford) {
+                      buttonText = "Your CP is not enough";
                       buttonClasses =
-                        "btn-success opacity-70 cursor-not-allowed";
+                        "btn-danger opacity-60 cursor-not-allowed !text-xs";
                       buttonDisabled = true;
-                      actionIcon = <FaCheck className="mr-2" />;
+                      actionIcon = null;
                     }
-
                     return (
                       <div
-                        key={item.id}
+                        key={item.itemId}
                         className={`shop-item card flex flex-col justify-between p-4 rounded-xl shadow-lg transition-all duration-300 
-                                    ${
-                                      isActive
-                                        ? "border-2 border-green-500 ring-2 ring-green-500/50"
-                                        : isPurchased
-                                        ? "border-amber-500"
-                                        : "border-gray-700"
-                                    }
-                                    ${
-                                      !canAfford && !isPurchased && !isActive
-                                        ? "opacity-70"
-                                        : ""
-                                    }
-                                    bg-gray-750 hover:shadow-indigo-500/30`} 
+                                      ${
+                                        isActive
+                                          ? "border-2 border-green-500 ring-2 ring-green-500/50"
+                                          : isPurchased
+                                          ? "border-amber-500"
+                                          : "border-gray-700"
+                                      }
+                                      ${
+                                        !canAfford && !isPurchased && !isActive
+                                          ? "opacity-70"
+                                          : ""
+                                      }
+                                      bg-gray-750 hover:shadow-indigo-500/30`}
                       >
                         <div>
                           <div className="w-full h-36 bg-gray-800 rounded-md flex items-center justify-center mb-4 overflow-hidden">
-                            <ItemIcon
+                            <IconFactory
+                              iconName={item.icon}
                               className={`text-6xl ${
                                 isActive
                                   ? "text-green-400"

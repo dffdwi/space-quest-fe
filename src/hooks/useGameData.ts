@@ -23,9 +23,10 @@ import {
   FaTrophy,
   FaBolt,
 } from "react-icons/fa";
+import api from "@/lib/api";
 
 export interface PlayerTask {
-  id: string;
+  taskId: string;
   title: string;
   description?: string;
   dueDate?: string;
@@ -40,7 +41,7 @@ export interface PlayerTask {
 }
 
 export interface PlayerMission {
-  id: string;
+  missionId: string;
   title: string;
   description: string;
   target: number;
@@ -54,22 +55,22 @@ export interface PlayerMission {
 }
 
 export interface PlayerBadge {
-  id: string;
+  badgeId: string;
   name: string;
   description: string;
-  icon: React.ElementType;
+  icon: string;
   color: string;
   earnedAt?: string;
 }
 
 export interface ShopItem {
-  id: string;
+  itemId: string;
   name: string;
   description: string;
   price: number;
   type: "theme" | "avatar_frame" | "power_up" | "cosmetic";
   value: string;
-  icon: React.ElementType;
+  icon?: string;
   category?: "Ship Customization" | "Commander Gear" | "Consumables";
   duration?: number;
 }
@@ -131,110 +132,110 @@ const iconMap: { [key: string]: React.ElementType } = {
   FaAward: FaAward,
 };
 
-export const ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [
+export let ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [
   {
-    id: "b_first_mission",
+    badgeId: "b_first_mission",
     name: "First Contact",
     description: "Complete your first mission log.",
-    icon: iconMap["FaRegLightbulb"] || FaAward,
+    icon: "FaRegLightbulb",
     color: "text-yellow-400",
   },
   {
-    id: "b_explorer_initiate",
+    badgeId: "b_explorer_initiate",
     name: "Explorer Initiate",
     description: "Complete 3 mission logs.",
-    icon: iconMap["FaSpaceShuttle"] || FaAward,
+    icon: "FaSpaceShuttle",
     color: "text-sky-400",
   },
   {
-    id: "b_diligent_commander",
+    badgeId: "b_diligent_commander",
     name: "Diligent Commander",
     description: "Complete 10 mission logs.",
-    icon: iconMap["FaUserAstronaut"] || FaAward,
+    icon: "FaUserAstronaut",
     color: "text-purple-400",
   },
   {
-    id: "b_level_5_cadet",
+    badgeId: "b_level_5_cadet",
     name: "Cadet Level 5",
     description: "Reach Level 5.",
-    icon: iconMap["FaGraduationCap"] || FaAward,
+    icon: "FaGraduationCap",
     color: "text-indigo-400",
   },
   {
-    id: "b_daily_streak_3",
+    badgeId: "b_daily_streak_3",
     name: "Consistent Voyager (3 Days)",
     description: "Log in 3 days in a row.",
-    icon: iconMap["FaCalendarCheck"] || FaAward,
+    icon: "FaCalendarCheck",
     color: "text-teal-400",
   },
   {
-    id: "b_credits_collector",
+    badgeId: "b_credits_collector",
     name: "Credits Collector",
     description: "Accumulate 500 Cosmic Credits.",
-    icon: iconMap["FaCoins"] || FaAward,
+    icon: "FaCoins",
     color: "text-amber-400",
   },
 ];
 
-export const SHOP_ITEMS_CONFIG: ShopItem[] = [
+export let SHOP_ITEMS_CONFIG: ShopItem[] = [
   {
-    id: "theme_nebula_dark",
+    itemId: "theme_nebula_dark",
     name: "Nebula Dark Theme",
     description:
       "Navigate the cosmos in a sleek, dark interface with vibrant nebula accents.",
     price: 250,
     type: "theme",
     value: "theme-nebula-dark",
-    icon: FaPalette,
+    icon: "FaPalette",
     category: "Ship Customization",
   },
   {
-    id: "theme_starfield_light",
+    itemId: "theme_starfield_light",
     name: "Starfield Light Theme",
     description:
       "A bright and clear interface, like gazing upon a field of distant stars.",
     price: 200,
     type: "theme",
     value: "theme-starfield-light",
-    icon: FaPalette,
+    icon: "FaPalette",
     category: "Ship Customization",
   },
   {
-    id: "avatar_frame_gold_commander",
+    itemId: "avatar_frame_gold_commander",
     name: "Gold Commander Frame",
     description: "A prestigious gold frame for your commander avatar.",
     price: 150,
     type: "avatar_frame",
     value: "gold-commander-frame",
-    icon: FaStar,
+    icon: "FaStar",
     category: "Commander Gear",
   },
   {
-    id: "avatar_frame_nova_burst",
+    itemId: "avatar_frame_nova_burst",
     name: "Nova Burst Frame",
     description: "An energetic frame resembling a stellar nova.",
     price: 120,
     type: "avatar_frame",
     value: "nova-burst-frame",
-    icon: FaStar,
+    icon: "FaStar",
     category: "Commander Gear",
   },
   {
-    id: "power_up_xp_boost_small",
+    itemId: "power_up_xp_boost_small",
     name: "XP Hyper-Boost (Small)",
     description:
       "Doubles XP gained from the next completed mission log. Single use.",
     price: 75,
     type: "power_up",
     value: "xp_boost_small_1use",
-    icon: FaFlask,
+    icon: "FaFlask",
     category: "Consumables",
     duration: 1,
   },
 ];
 
 const initialPlayerDataTemplate = (authUser: AuthUser | null): PlayerData => ({
-  id: authUser ? String(authUser.id) : "defaultUser",
+  id: authUser ? String(authUser.userId) : "defaultUser",
   name: authUser?.name || authUser?.email?.split("@")[0] || "Explorer",
   avatarUrl:
     (authUser as any)?.photoURL ||
@@ -247,7 +248,7 @@ const initialPlayerDataTemplate = (authUser: AuthUser | null): PlayerData => ({
   tasks: [],
   missions: [
     {
-      id: "m_initial_steps",
+      missionId: "m_initial_steps",
       title: "Initial Steps in the Cosmos",
       description: "Complete 3 mission logs to understand your new journey.",
       target: 3,
@@ -259,7 +260,7 @@ const initialPlayerDataTemplate = (authUser: AuthUser | null): PlayerData => ({
       isClaimed: false,
     },
     {
-      id: "m_weekly_scan",
+      missionId: "m_weekly_scan",
       title: "Weekly Sector Scan",
       description: "Complete 7 mission logs this week to map nearby sectors.",
       target: 7,
@@ -293,64 +294,95 @@ export const useGameData = (authUser: AuthUser | null) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
-  const getLocalStorageKey = useCallback(() => {
-    return authUser ? `spaceQuestGameData_${String(authUser.id)}` : null;
-  }, [authUser]);
+  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
+  const [allBadges, setAllBadges] = useState<PlayerBadge[]>([]);
 
-  useEffect(() => {
-    const key = getLocalStorageKey();
-    if (!key) {
-      setIsLoadingData(false);
-      if (!authUser) setPlayerData(null);
-      return;
-    }
+  const fetchGameData = useCallback(async () => {
+    if (!authUser) return;
+
     setIsLoadingData(true);
     try {
-      const savedData = localStorage.getItem(key);
-      if (savedData) {
-        const parsedData = JSON.parse(savedData) as PlayerData;
-        const template = initialPlayerDataTemplate(authUser);
-        setPlayerData({
-          ...template,
-          ...parsedData,
-          id: String(authUser!.id),
-          name:
-            authUser!.name || authUser!.email?.split("@")[0] || template.name,
-          avatarUrl: parsedData.avatarUrl || template.avatarUrl,
-          missions: template.missions.map((tm) => ({
-            ...tm,
-            ...(parsedData.missions?.find((pm) => pm.id === tm.id) || {}),
-          })),
-          dailyLogin: { ...template.dailyLogin, ...parsedData.dailyLogin },
-          dailyDiscovery: {
-            ...template.dailyDiscovery,
-            ...parsedData.dailyDiscovery,
-          },
-          stats: { ...template.stats, ...parsedData.stats },
-        });
-      } else if (authUser) {
-        setPlayerData(initialPlayerDataTemplate(authUser));
+      const [profileRes, tasksRes, missionsRes, gameConfigRes] =
+        await Promise.all([
+          api.get("/auth/profile"),
+          api.get("/tasks"),
+          api.get("/missions/my-progress"),
+          api.get("/game-config/all"),
+        ]);
+
+      const profile = profileRes.data;
+      const tasks = tasksRes.data;
+      const playerMissions = missionsRes.data;
+      const gameConfig = gameConfigRes.data;
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const lastLoginStr = profile.lastLoginDate
+        ? new Date(profile.lastLoginDate).toISOString().split("T")[0]
+        : null;
+
+      const combinedData: PlayerData = {
+        id: profile.userId,
+        name: profile.name,
+        avatarUrl: profile.avatarUrl,
+        level: profile.level,
+        xp: profile.xp,
+        credits: profile.credits,
+        activeTheme: profile.activeTheme,
+        avatarFrameId: profile.activeAvatarFrameId,
+        tasks: tasks,
+        missions: playerMissions,
+        earnedBadgeIds: (profile.badges || []).map(
+          (b: { badgeId: string }) => b.badgeId
+        ),
+        purchasedShopItemIds: (profile.inventory || []).map(
+          (i: { itemId: string }) => i.itemId
+        ),
+        dailyLogin: {
+          lastLoginDate: profile.lastLoginDate,
+          streak: profile.loginStreak,
+          bonusClaimedToday: todayStr === lastLoginStr,
+        },
+        dailyDiscovery: {
+          lastClaimedDate: profile.lastDiscoveryDate,
+          available:
+            todayStr !==
+            (profile.lastDiscoveryDate
+              ? new Date(profile.lastDiscoveryDate).toISOString().split("T")[0]
+              : null),
+        },
+        stats: profile.stats,
+      };
+
+      setShopItems(gameConfig.shopItems);
+      setAllBadges(gameConfig.badges);
+
+      setPlayerData(combinedData);
+      console.log(combinedData);
+      if (!combinedData.dailyLogin.bonusClaimedToday) {
+        api
+          .post("/daily/check-in")
+          .then((response) => {
+            fetchGameData();
+          })
+          .catch((err) => {
+            if (err.response?.status !== 400) console.error(err);
+          });
       }
     } catch (error) {
-      console.error("Failed to load game data:", error);
-      if (authUser) {
-        setPlayerData(initialPlayerDataTemplate(authUser));
-      }
+      console.error("Gagal mengambil data game dari server:", error);
     } finally {
       setIsLoadingData(false);
     }
-  }, [authUser, getLocalStorageKey]);
+  }, [authUser]);
 
   useEffect(() => {
-    const key = getLocalStorageKey();
-    if (key && playerData && !isLoadingData) {
-      try {
-        localStorage.setItem(key, JSON.stringify(playerData));
-      } catch (error) {
-        console.error("Failed to save game data:", error);
-      }
+    if (authUser) {
+      fetchGameData();
+    } else {
+      setPlayerData(null);
+      setIsLoadingData(false);
     }
-  }, [playerData, isLoadingData, getLocalStorageKey]);
+  }, [authUser, fetchGameData]);
 
   const updatePlayerData = useCallback(
     (
@@ -375,63 +407,82 @@ export const useGameData = (authUser: AuthUser | null) => {
     },
     []
   );
+
   const addTask = useCallback(
-    (
+    async (
       newTaskData: Omit<
         PlayerTask,
-        "id" | "completed" | "completedAt" | "status"
+        "taskId" | "completed" | "completedAt" | "status"
       >
     ) => {
-      const taskToAdd: PlayerTask = {
-        ...newTaskData,
-        id: `task-<span class="math-inline">\{Date\.now\(\)\}\-</span>{Math.random().toString(36).substr(2, 9)}`,
-        completed: false,
-        status: "todo",
-        assignedTo: newTaskData.assignedTo
-          ? String(newTaskData.assignedTo)
-          : playerData?.id
-          ? String(playerData.id)
-          : null,
-      };
-      updatePlayerData((prevPlayerData: PlayerData) => {
-        return { tasks: [taskToAdd, ...(prevPlayerData.tasks || [])] };
-      });
-      window.showGlobalNotification?.({
-        type: "info",
-        title: "Mission Log Added!",
-        message: `"${taskToAdd.title}" has been recorded.`,
-        icon: FaFileMedicalAlt,
-      });
-      return taskToAdd;
-    },
-    [updatePlayerData, playerData?.id]
-  );
+      if (!playerData) return;
 
-  const editTask = useCallback(
-    (taskId: string, updates: Partial<PlayerTask>) => {
-      let taskTitleForNotification = "";
-      updatePlayerData((prevPlayerData: PlayerData) => {
-        const newTasks = prevPlayerData.tasks.map((task) => {
-          if (task.id === taskId) {
-            taskTitleForNotification = updates.title || task.title;
-            return { ...task, ...updates };
-          }
-          return task;
+      try {
+        const response = await api.post("/tasks", newTaskData);
+        const createdTask = response.data;
+
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            tasks: [createdTask, ...prev.tasks],
+          };
         });
-        if (!prevPlayerData.tasks.find((task) => task.id === taskId))
-          return prevPlayerData;
-        return { ...prevPlayerData, tasks: newTasks };
-      });
-      if (taskTitleForNotification) {
+
         window.showGlobalNotification?.({
           type: "info",
-          title: "Mission Log Updated!",
-          message: `Log entry "${taskTitleForNotification}" modified.`,
-          icon: FaEdit,
+          title: "Mission Log Added!",
+          message: `"${createdTask.title}" has been recorded.`,
+          icon: FaFileMedicalAlt,
+        });
+
+        return createdTask;
+      } catch (error) {
+        console.error("Gagal membuat tugas baru:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Creation Failed",
+          message: "Failed to record new mission log on the server.",
         });
       }
     },
-    [updatePlayerData]
+    [playerData, updatePlayerData]
+  );
+
+  const editTask = useCallback(
+    async (taskId: string, updates: Partial<PlayerTask>) => {
+      if (!playerData) return;
+
+      try {
+        const response = await api.put(`/tasks/${taskId}`, updates);
+        const updatedTask = response.data;
+
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            tasks: prev.tasks.map((task) =>
+              task.taskId === taskId ? updatedTask : task
+            ),
+          };
+        });
+
+        window.showGlobalNotification?.({
+          type: "info",
+          title: "Mission Log Updated!",
+          message: `Log entry "${updatedTask.title}" modified.`,
+          icon: FaEdit,
+        });
+
+        return updatedTask;
+      } catch (error) {
+        console.error(`Gagal memperbarui tugas ${taskId}:`, error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Update Failed",
+          message: "Failed to save changes to the server.",
+        });
+      }
+    },
+    [playerData, updatePlayerData]
   );
 
   const consumePowerUp = useCallback(
@@ -476,196 +527,86 @@ export const useGameData = (authUser: AuthUser | null) => {
   );
 
   const completeTask = useCallback(
-    (taskId: string) => {
-      let currentPlayerData: PlayerData | null = null;
-      setPlayerData((prev) => {
-        currentPlayerData = prev;
-        return prev;
-      });
+    async (taskId: string) => {
+      if (!playerData) return;
 
-      setTimeout(() => {
-        if (!currentPlayerData) return;
+      try {
+        const response = await api.post(`/tasks/${taskId}/complete`);
+        const { task: updatedTask, eventResult } = response.data;
 
-        let taskThatWasCompleted: PlayerTask | undefined;
-        let xpBoostMultiplier = 1;
-        let activePowerUpValue: string | null = null;
+        updatePlayerData((prev) => {
+          if (!prev) return {};
 
-        if (currentPlayerData.activePowerUps) {
-          const boost = Object.entries(currentPlayerData.activePowerUps).find(
-            ([key, value]) => key.includes("xp_boost") && value.active
+          const newState = { ...prev };
+
+          newState.tasks = prev.tasks.map((t) =>
+            t.taskId === taskId ? updatedTask : t
           );
-          if (boost) {
-            xpBoostMultiplier = 2;
-            activePowerUpValue = boost[0];
-          }
-        }
-        updatePlayerData((prev: PlayerData) => {
-          const originalLevel = prev.level;
-          let madeChanges = false;
-          let taskTitleForNotification = "";
-          let taskCompletedXp = 0;
-          let taskCompletedCredits = 0;
 
-          const newTasks = prev.tasks.map((t) => {
-            if (t.id === taskId && !t.completed) {
-              madeChanges = true;
-              taskThatWasCompleted = {
-                ...t,
-                completed: true,
-                completedAt: new Date().toISOString(),
-                status: "done",
-              };
-
-              taskCompletedXp = taskThatWasCompleted.xp * xpBoostMultiplier;
-
-              taskCompletedCredits =
-                taskThatWasCompleted.credits ||
-                Math.floor(taskThatWasCompleted.xp / 5);
-              taskTitleForNotification = taskThatWasCompleted.title;
-              return taskThatWasCompleted;
-            }
-            return t;
-          });
-
-          if (!madeChanges || !taskThatWasCompleted) {
-            return {};
+          const user = prev;
+          user.xp += updatedTask.xp;
+          user.credits += updatedTask.credits;
+          if (eventResult.leveledUp) {
+            user.level = eventResult.leveledUp.to;
           }
 
-          if (activePowerUpValue) {
-            window.showGlobalNotification?.({
-              type: "quest",
-              title: "Hyper-Boost Active!",
-              message: `XP digandakan untuk "${taskTitleForNotification}"!`,
-              icon: FaBolt,
-            });
-          }
-
-          let newXp = prev.xp + taskCompletedXp;
-          let newCredits = prev.credits + taskCompletedCredits;
-          let newLevel = prev.level;
-          let leveledUp = false;
-
-          while (
-            newLevel < XP_PER_LEVEL.length - 1 &&
-            newXp >= XP_PER_LEVEL[newLevel]
+          if (
+            eventResult.missionsReadyToClaim &&
+            eventResult.missionsReadyToClaim.length > 0
           ) {
-            newLevel++;
-            leveledUp = true;
-          }
-
-          const updatedMissions = prev.missions.map((mission) => {
-            let currentProgress = mission.currentProgress;
-            if (
-              !mission.isClaimed &&
-              currentProgress < mission.target &&
-              (mission.type === "once" ||
-                mission.type === "weekly" ||
-                mission.type === "daily")
-            ) {
-              currentProgress++;
-            }
-            if (
-              currentProgress >= mission.target &&
-              !mission.isClaimed &&
-              prev.missions.find(
-                (pm) => pm.id === mission.id && pm.currentProgress < pm.target
-              )
-            ) {
-              window.showGlobalNotification?.({
-                type: "quest",
-                title: "Constellation Objective Met!",
-                message: `"${mission.title}" ready for debrief. Claim your reward!`,
-                icon: FaRocket,
-              });
-            }
-            return { ...mission, currentProgress };
-          });
-
-          const newEarnedBadgeIds = [...prev.earnedBadgeIds];
-          ALL_BADGES_CONFIG.forEach((badgeConfig) => {
-            if (!prev.earnedBadgeIds.includes(badgeConfig.id)) {
-              let conditionMet = false;
-              const totalTasksNowCompleted = prev.stats.tasksCompleted + 1;
-              if (
-                badgeConfig.id === "b_first_mission" &&
-                totalTasksNowCompleted === 1
-              )
-                conditionMet = true;
-              if (
-                badgeConfig.id === "b_explorer_initiate" &&
-                totalTasksNowCompleted >= 3
-              )
-                conditionMet = true;
-              if (
-                badgeConfig.id === "b_diligent_commander" &&
-                totalTasksNowCompleted >= 10
-              )
-                conditionMet = true;
-              if (
-                badgeConfig.id === "b_level_5_cadet" &&
-                newLevel >= 5 &&
-                originalLevel < 5
-              )
-                conditionMet = true;
-              if (
-                badgeConfig.id === "b_credits_collector" &&
-                newCredits >= 500 &&
-                prev.credits < 500
-              )
-                conditionMet = true;
-
-              if (conditionMet && !newEarnedBadgeIds.includes(badgeConfig.id)) {
-                newEarnedBadgeIds.push(badgeConfig.id);
-                window.showGlobalNotification?.({
-                  type: "success",
-                  title: "Commendation Earned!",
-                  message: `New insignia: ${badgeConfig.name}`,
-                  icon: badgeConfig.icon || FaAward,
-                });
+            const readyMissionIds = new Set(
+              eventResult.missionsReadyToClaim.map((m: any) => m.missionId)
+            );
+            newState.missions = prev.missions.map((pm) => {
+              if (readyMissionIds.has(pm.missionId)) {
               }
-            }
-          });
-
-          if (leveledUp) {
-            window.showGlobalNotification?.({
-              type: "quest",
-              title: "Promotion!",
-              message: `Reached Command Level ${newLevel}!`,
-              icon: FaUserShield,
+              return pm;
             });
           }
 
-          window.showGlobalNotification?.({
-            type: "success",
-            title: "Objective Cleared!",
-            message: `+${taskCompletedXp} XP & +${taskCompletedCredits} CP for "${taskTitleForNotification}".`,
-            icon: FaCheckCircle,
-          });
-
-          return {
-            tasks: newTasks,
-            xp: newXp,
-            level: newLevel,
-            credits: newCredits,
-            missions: updatedMissions,
-            earnedBadgeIds: newEarnedBadgeIds,
-            stats: {
-              ...prev.stats,
-              tasksCompleted: prev.stats.tasksCompleted + 1,
-              totalXpEarned: prev.stats.totalXpEarned + taskCompletedXp,
-              totalCreditsEarned:
-                prev.stats.totalCreditsEarned + taskCompletedCredits,
-            },
-          };
+          return newState;
         });
 
-        if (activePowerUpValue) {
-          consumePowerUp(activePowerUpValue);
+        window.showGlobalNotification?.({
+          type: "success",
+          title: "Objective Cleared!",
+          message: `+${updatedTask.xp} XP & +${updatedTask.credits} CP for "${updatedTask.title}".`,
+          icon: FaCheckCircle,
+        });
+
+        if (eventResult.leveledUp) {
+          window.showGlobalNotification?.({
+            type: "quest",
+            title: "Promotion!",
+            message: `Reached Command Level ${eventResult.leveledUp.to}!`,
+            icon: FaUserShield,
+          });
         }
-      }, 50);
+
+        if (eventResult.badgesEarned && eventResult.badgesEarned.length > 0) {
+          eventResult.badgesEarned.forEach((badge: any) => {
+            window.showGlobalNotification?.({
+              type: "success",
+              title: "Commendation Earned!",
+              message: `New insignia: ${badge.name}`,
+              icon: FaAward,
+            });
+          });
+        }
+      } catch (error: any) {
+        console.error(`Gagal menyelesaikan tugas ${taskId}:`, error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Action Failed",
+          message:
+            error.response?.data?.message ||
+            "Failed to complete the objective on the server.",
+        });
+      }
     },
-    [setPlayerData, updatePlayerData, consumePowerUp]
+    [playerData, updatePlayerData]
   );
+
   const getXpBoundaries = useCallback(() => {
     if (!playerData)
       return {
@@ -696,230 +637,95 @@ export const useGameData = (authUser: AuthUser | null) => {
     };
   }, [playerData]);
 
-  const handleDailyLogin = useCallback(() => {
+  const handleDailyLogin = useCallback(async () => {
     if (!playerData) return;
-    const todayStr = new Date().toISOString().split("T")[0];
 
-    if (playerData.dailyLogin.lastLoginDate !== todayStr) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split("T")[0];
-      const currentStreak = playerData.dailyLogin.streak || 0;
-      const newStreak =
-        playerData.dailyLogin.lastLoginDate === yesterdayStr
-          ? currentStreak + 1
-          : 1;
-      const bonusXp = 10 + newStreak * 5;
-      const bonusCredits = 5 + newStreak * 2;
+    try {
+      const response = await api.post("/daily/check-in");
+      const { bonusXp, bonusCredits, user: updatedUser } = response.data;
 
-      updatePlayerData((prevPlayerData: PlayerData) => {
-        const originalLevel = prevPlayerData.level;
-        const newXpVal = prevPlayerData.xp + bonusXp;
-        const newCreditsVal = prevPlayerData.credits + bonusCredits;
-        let newLevelVal = prevPlayerData.level;
-        let leveledUp = false;
-        while (
-          newLevelVal < XP_PER_LEVEL.length - 1 &&
-          newXpVal >= XP_PER_LEVEL[newLevelVal]
-        ) {
-          newLevelVal++;
-          leveledUp = true;
-        }
+      updatePlayerData((prev) => ({
+        ...prev,
+        ...updatedUser,
+        dailyLogin: {
+          lastLoginDate: updatedUser.lastLoginDate,
+          streak: updatedUser.loginStreak,
+          bonusClaimedToday: true,
+        },
+      }));
 
-        const earnedBadges = [...prevPlayerData.earnedBadgeIds];
-        if (newStreak >= 3 && !earnedBadges.includes("b_daily_streak_3")) {
-          earnedBadges.push("b_daily_streak_3");
-          const badge = ALL_BADGES_CONFIG.find(
-            (b) => b.id === "b_daily_streak_3"
-          );
-          if (badge) {
-            setTimeout(
-              () =>
-                window.showGlobalNotification?.({
-                  type: "success",
-                  title: "Commendation Earned!",
-                  message: `New insignia: ${badge.name}`,
-                  icon: badge.icon,
-                }),
-              100
-            );
-          }
-        }
-        if (leveledUp) {
-          setTimeout(
-            () =>
-              window.showGlobalNotification?.({
-                type: "quest",
-                title: "Level Up via Login Bonus!",
-                message: `Reached Command Level ${newLevelVal}!`,
-                icon: FaUserShield,
-              }),
-            50
-          );
-        }
-
-        return {
-          xp: newXpVal,
-          credits: newCreditsVal,
-          level: newLevelVal,
-          dailyLogin: {
-            lastLoginDate: todayStr,
-            streak: newStreak,
-            bonusClaimedToday: true,
-          },
-          earnedBadgeIds: earnedBadges,
-          stats: {
-            ...prevPlayerData.stats,
-            logins: prevPlayerData.stats.logins + 1,
-            currentMissionStreak: Math.max(
-              prevPlayerData.stats.currentMissionStreak,
-              newStreak
-            ),
-            longestMissionStreak: Math.max(
-              prevPlayerData.stats.longestMissionStreak,
-              newStreak
-            ),
-          },
-        };
-      });
       window.showGlobalNotification?.({
         type: "success",
-        title: "Daily Logon Bonus!",
-        message: `Streak: ${newStreak} days! +${bonusXp} XP, +${bonusCredits} CP.`,
+        title: "Daily Check-in Bonus!",
+        message: `Streak: ${updatedUser.loginStreak} days! +${bonusXp} XP, +${bonusCredits} CP.`,
         icon: FaCalendarCheck,
       });
+    } catch (error: any) {
+      if (error.response?.status !== 400) {
+        console.error("Gagal melakukan check-in harian:", error);
+      }
     }
   }, [playerData, updatePlayerData]);
 
-  useEffect(() => {
-    if (
-      playerData &&
-      !isLoadingData &&
-      authUser &&
-      !playerData.dailyLogin.bonusClaimedToday &&
-      playerData.dailyLogin.lastLoginDate !==
-        new Date().toISOString().split("T")[0]
-    ) {
-      handleDailyLogin();
-    }
-  }, [playerData?.id, isLoadingData, authUser]);
-
   const purchaseShopItem = useCallback(
-    (itemId: string) => {
-      const item = SHOP_ITEMS_CONFIG.find((i) => i.id === itemId);
+    async (itemId: string) => {
+      if (!playerData) return;
+
+      const item = shopItems.find((i) => i.itemId === itemId);
       if (!item) {
-        window.showGlobalNotification?.({
-          type: "error",
-          title: "Artifact Not Found",
-          message: "The requested item does not exist in the Star Market.",
-        });
-        return false;
+        console.error("Item tidak ditemukan di konfigurasi.");
+        return;
       }
 
-      updatePlayerData((prev: PlayerData): Partial<PlayerData> => {
-        if (prev.credits < item.price) {
-          window.showGlobalNotification?.({
-            type: "error",
-            title: "Insufficient Credits",
-            message: `You need ${item.price} CP for ${item.name}. You have ${prev.credits} CP.`,
-          });
-          return {};
-        }
+      if (playerData.credits < item.price) {
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Insufficient Credits!",
+          message: `Not enough Cosmic Points for ${item.name}.`,
+        });
+        return;
+      }
 
-        if (
-          item.type !== "power_up" &&
-          prev.purchasedShopItemIds.includes(itemId)
-        ) {
-          window.showGlobalNotification?.({
-            type: "info",
-            title: "Already Acquired",
-            message: `You already own the artifact: ${item.name}.`,
-          });
-          return {};
-        }
-
-        if (
-          item.type === "power_up" &&
-          prev.activePowerUps?.[item.value]?.active
-        ) {
-          window.showGlobalNotification?.({
-            type: "warning",
-            title: "Power-up Active",
-            message: `${item.name} is already active or a similar boost is in effect.`,
-          });
-          return {};
-        }
-
-        const newCredits = prev.credits - item.price;
-        let newPurchasedShopItemIds = [...prev.purchasedShopItemIds];
-        let newActiveTheme = prev.activeTheme;
-        let newAvatarFrameId = prev.avatarFrameId;
-        let newActivePowerUps = { ...(prev.activePowerUps || {}) };
-
-        let notificationTitle = "Artifact Acquired!";
-        let notificationMessage = `You have successfully acquired ${item.name}!`;
-        let notificationIcon: React.ElementType = item.icon || FaGift;
-
-        if (item.type === "theme") {
-          newActiveTheme = item.value;
-          if (!newPurchasedShopItemIds.includes(itemId))
-            newPurchasedShopItemIds.push(itemId);
-          notificationMessage = `Ship's interface theme changed to ${item.name}.`;
-        } else if (item.type === "avatar_frame") {
-          newAvatarFrameId = item.value;
-          if (!newPurchasedShopItemIds.includes(itemId))
-            newPurchasedShopItemIds.push(itemId);
-          notificationMessage = `Commander avatar frame set to ${item.name}.`;
-        } else if (item.type === "power_up") {
-          newActivePowerUps[item.value] = {
-            active: true,
-            usesLeft: item.duration,
-          };
-          notificationTitle = "Power-up Activated!";
-          notificationMessage = `${item.name} is now active! (${
-            item.duration
-          } use${item.duration === 1 ? "" : "s"} left).`;
-        } else if (item.type === "cosmetic") {
-          if (!newPurchasedShopItemIds.includes(itemId))
-            newPurchasedShopItemIds.push(itemId);
-        }
+      try {
+        await api.post("/shop/purchase", { itemId });
+        await fetchGameData();
 
         window.showGlobalNotification?.({
           type: "success",
-          title: notificationTitle,
-          message: notificationMessage,
-          icon: notificationIcon,
+          title: "Artifact Acquired!",
+          message: `You have successfully acquired ${item.name}!`,
         });
-
-        return {
-          credits: newCredits,
-          purchasedShopItemIds: newPurchasedShopItemIds,
-          activeTheme: newActiveTheme,
-          avatarFrameId: newAvatarFrameId,
-          activePowerUps: newActivePowerUps,
-          stats: {
-            ...prev.stats,
-            totalCreditsEarned: prev.stats.totalCreditsEarned,
-          },
-        };
-      });
-      return true;
+      } catch (error: any) {
+        console.error("Gagal membeli item:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Purchase Failed",
+          message:
+            error.response?.data?.message ||
+            "Could not complete the transaction.",
+        });
+      }
     },
-    [updatePlayerData]
+    [playerData, shopItems, fetchGameData]
   );
 
   const updatePlayerProfile = useCallback(
-    (newName: string, newAvatarUrl: string) => {
-      updatePlayerData((prev: PlayerData) => {
-        let nameChanged = prev.name !== newName && newName.trim() !== "";
-        let avatarChanged =
-          prev.avatarUrl !== newAvatarUrl && newAvatarUrl.trim() !== "";
+    async (newName: string, newAvatarUrl: string) => {
+      try {
+        const response = await api.put("/users/profile", {
+          name: newName,
+          avatarUrl: newAvatarUrl,
+        });
+        const updatedUser = response.data;
 
-        if (!nameChanged && !avatarChanged) return {};
-
-        const updates: Partial<PlayerData> = {};
-        if (nameChanged) updates.name = newName.trim();
-        if (avatarChanged) updates.avatarUrl = newAvatarUrl.trim();
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            ...prev,
+            name: updatedUser.name,
+            avatarUrl: updatedUser.avatarUrl,
+          };
+        });
 
         window.showGlobalNotification?.({
           type: "success",
@@ -927,197 +733,187 @@ export const useGameData = (authUser: AuthUser | null) => {
           message: "Your commander profile has been successfully updated.",
           icon: FaUserAstronaut,
         });
-        return updates;
-      });
+      } catch (error: any) {
+        console.error("Gagal update profil:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Update Failed",
+          message: error.response?.data?.message || "Could not update profile.",
+        });
+      }
     },
     [updatePlayerData]
   );
 
   const applyTheme = useCallback(
-    (themeValue: string) => {
-      const themeItem = SHOP_ITEMS_CONFIG.find(
-        (item) => item.type === "theme" && item.value === themeValue
-      );
-      updatePlayerData((prev: PlayerData) => {
-        if (prev.activeTheme === themeValue) {
-          return {};
-        }
-        if (
-          themeValue !== "theme-dark" &&
-          themeValue !== "theme-default" &&
-          !prev.purchasedShopItemIds.includes(themeItem?.id || "")
-        ) {
-          window.showGlobalNotification?.({
-            type: "error",
-            title: "Theme Not Owned",
-            message: `You need to purchase the theme "${
-              themeItem?.name || themeValue
-            }" first.`,
-          });
-          return {};
-        }
+    async (themeValue: string) => {
+      try {
+        const response = await api.put("/users/profile/apply-theme", {
+          themeValue,
+        });
+        const updatedUser = response.data;
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            ...prev,
+            name: updatedUser.name,
+            avatarUrl: updatedUser.avatarUrl,
+            activeTheme: updatedUser.activeTheme,
+            activeAvatarFrameId: updatedUser.activeAvatarFrameId,
+          };
+        });
 
         window.showGlobalNotification?.({
           type: "success",
           title: "Ship Interface Updated",
-          message: `Visual theme changed to "${
-            themeItem?.name || themeValue
-          }".`,
+          message: `Visual theme changed to "${updatedUser.activeTheme}".`,
           icon: FaPalette,
         });
-        return { activeTheme: themeValue };
-      });
+      } catch (error: any) {
+        console.error("Gagal menerapkan tema:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Failed to Apply Theme",
+          message:
+            error.response?.data?.message ||
+            "Could not apply the selected theme.",
+        });
+      }
     },
     [updatePlayerData]
   );
 
   const applyAvatarFrame = useCallback(
-    (frameValue: string | null) => {
-      const frameItem = SHOP_ITEMS_CONFIG.find(
-        (item) => item.type === "avatar_frame" && item.value === frameValue
-      );
-      updatePlayerData((prev: PlayerData) => {
-        if (prev.avatarFrameId === frameValue) {
-          return {};
-        }
-        if (
-          frameValue !== null &&
-          !prev.purchasedShopItemIds.includes(frameItem?.id || "")
-        ) {
-          window.showGlobalNotification?.({
-            type: "error",
-            title: "Frame Not Owned",
-            message: `You need to purchase the frame "${
-              frameItem?.name || frameValue
-            }" first.`,
-          });
-          return {};
-        }
+    async (frameValue: string | null) => {
+      try {
+        const response = await api.put("/users/profile/apply-frame", {
+          frameValue,
+        });
+        const updatedUser = response.data;
+
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return {
+            ...prev,
+            activeAvatarFrameId: updatedUser.activeAvatarFrameId,
+          };
+        });
 
         window.showGlobalNotification?.({
           type: "success",
           title: "Avatar Frame Updated",
           message: frameValue
-            ? `Commander avatar frame set to "${
-                frameItem?.name || frameValue
-              }".`
+            ? `Commander avatar frame has been set.`
             : "Avatar frame has been reset.",
           icon: FaStar,
         });
-        return { avatarFrameId: frameValue };
-      });
+      } catch (error: any) {
+        console.error("Gagal menerapkan frame:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Failed to Apply Frame",
+          message:
+            error.response?.data?.message ||
+            "Could not apply the selected frame.",
+        });
+      }
     },
     [updatePlayerData]
   );
 
-  const resetGameData = useCallback(() => {
-    if (authUser) {
-      const defaultData = initialPlayerDataTemplate(authUser);
-      setPlayerData(defaultData);
+  const resetGameData = useCallback(async () => {
+    if (!authUser) return;
+
+    try {
+      const response = await api.post("/user/profile/reset");
+      const resetData = response.data;
+
+      await fetchGameData();
+
       window.showGlobalNotification?.({
         type: "warning",
         title: "Game Reset!",
-        message:
-          "Your mission logs, XP, and artifacts have been reset to default values.",
+        message: "Your mission logs, XP, and artifacts have been reset.",
         icon: FaRedo,
         duration: 6000,
       });
-    } else {
+    } catch (error) {
+      console.error("Gagal mereset data:", error);
       window.showGlobalNotification?.({
         type: "error",
-        title: "Error",
-        message: "Cannot reset data. No user is logged in.",
+        title: "Reset Failed",
+        message: "Could not reset your game data on the server.",
       });
     }
-  }, [authUser, setPlayerData]);
+  }, [authUser, fetchGameData]);
 
   const claimMissionReward = useCallback(
-    (missionId: string) => {
-      updatePlayerData((prev: PlayerData) => {
-        const mission = prev.missions.find((m) => m.id === missionId);
+    async (missionId: string) => {
+      if (!playerData) return;
 
-        if (
-          !mission ||
-          mission.currentProgress < mission.target ||
-          mission.isClaimed
-        ) {
-          window.showGlobalNotification?.({
-            type: "error",
-            title: "Claim Failed",
-            message: mission?.isClaimed
-              ? "Reward for this objective has already been claimed."
-              : "Objective not yet completed.",
-          });
-          return {};
-        }
+      try {
+        const response = await api.post(`/missions/${missionId}/claim`);
+        const { eventResult } = response.data;
 
-        const rewardXp = mission.rewardXp || 0;
-        const rewardCredits = mission.rewardCredits || 0;
-        const rewardBadgeId = mission.rewardBadgeId;
-
-        let newXp = prev.xp + rewardXp;
-        let newCredits = prev.credits + rewardCredits;
-        let newEarnedBadgeIds = [...prev.earnedBadgeIds];
-        let newLevel = prev.level;
-        let leveledUp = false;
-
-        while (
-          newLevel < XP_PER_LEVEL.length - 1 &&
-          newXp >= XP_PER_LEVEL[newLevel]
-        ) {
-          newLevel++;
-          leveledUp = true;
-        }
-
-        if (rewardBadgeId && !newEarnedBadgeIds.includes(rewardBadgeId)) {
-          newEarnedBadgeIds.push(rewardBadgeId);
-          const badge = ALL_BADGES_CONFIG.find((b) => b.id === rewardBadgeId);
-          if (badge) {
-            window.showGlobalNotification?.({
-              type: "success",
-              title: "Commendation Earned!",
-              message: `New insignia acquired: ${badge.name}`,
-              icon: badge.icon,
-            });
-          }
-        }
-
-        window.showGlobalNotification?.({
-          type: "success",
-          title: "Reward Claimed!",
-          message: `+${rewardXp} XP & +${rewardCredits} CP for completing "${mission.title}"!`,
-          icon: FaTrophy,
-        });
-
-        if (leveledUp) {
+        if (eventResult.leveledUp) {
           window.showGlobalNotification?.({
             type: "quest",
             title: "Promotion!",
-            message: `Your reward propelled you to Level ${newLevel}!`,
+            message: `Your reward propelled you to Level ${eventResult.leveledUp.to}!`,
             icon: FaUserShield,
           });
         }
 
-        const updatedMissions = prev.missions.map((m) =>
-          m.id === missionId ? { ...m, isClaimed: true } : m
-        );
+        if (eventResult.badgesEarned && eventResult.badgesEarned.length > 0) {
+          eventResult.badgesEarned.forEach((badge: PlayerBadge) => {
+            window.showGlobalNotification?.({
+              type: "success",
+              title: "Commendation Earned!",
+              message: `New insignia acquired: ${badge.name}`,
+              icon: FaAward,
+            });
+          });
+        }
 
-        return {
-          xp: newXp,
-          credits: newCredits,
-          level: newLevel,
-          missions: updatedMissions,
-          earnedBadgeIds: newEarnedBadgeIds,
-          stats: {
-            ...prev.stats,
-            totalXpEarned: prev.stats.totalXpEarned + rewardXp,
-            totalCreditsEarned: prev.stats.totalCreditsEarned + rewardCredits,
-          },
-        };
-      });
+        fetchGameData();
+      } catch (error: any) {
+        console.error("Gagal klaim hadiah misi:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Claim Failed",
+          message:
+            error.response?.data?.message || "Could not claim mission reward.",
+        });
+      }
     },
-    [updatePlayerData]
+    [playerData, fetchGameData]
   );
+
+  const claimDailyDiscovery = useCallback(async () => {
+    if (!playerData) return;
+
+    try {
+      const response = await api.post("/daily/claim-discovery");
+      const { rewardCredits, rewardXp } = response.data;
+
+      fetchGameData();
+
+      window.showGlobalNotification?.({
+        type: "success",
+        title: "Supply Drop Acquired!",
+        message: `You found +${rewardCredits} CP and +${rewardXp} XP!`,
+        icon: FaGift,
+      });
+    } catch (error: any) {
+      console.error("Gagal klaim discovery:", error);
+      window.showGlobalNotification?.({
+        type: "error",
+        title: "Claim Failed",
+        message:
+          error.response?.data?.message || "Supply drop already claimed today.",
+      });
+    }
+  }, [playerData, fetchGameData]);
 
   return {
     playerData,
@@ -1135,5 +931,8 @@ export const useGameData = (authUser: AuthUser | null) => {
     applyAvatarFrame,
     resetGameData,
     claimMissionReward,
+    SHOP_ITEMS_CONFIG: shopItems,
+    ALL_BADGES_CONFIG: allBadges,
+    claimDailyDiscovery,
   };
 };

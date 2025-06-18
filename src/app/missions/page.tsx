@@ -16,8 +16,14 @@ import {
 
 export default function Missions() {
   const { user, isLoading: authLoading } = useAuth();
-  const { playerData, isLoadingData, completeTask, addTask, editTask } =
-    useGameData(user);
+  const {
+    playerData,
+    isLoadingData,
+    completeTask,
+    addTask,
+    editTask,
+    claimMissionReward,
+  } = useGameData(user);
   const router = useRouter();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,7 +71,7 @@ export default function Missions() {
   const formatDate = (dateString?: string) => {
     if (!dateString) return "No Deadline";
     try {
-      return new Date(dateString).toLocaleDateString("en-ID");
+      return new Date(dateString).toLocaleDateString("en-CA");
     } catch {
       return "Invalid Date";
     }
@@ -79,7 +85,7 @@ export default function Missions() {
     >
       <div className="flex items-center flex-grow min-w-0">
         <button
-          onClick={() => completeTask(task.id)}
+          onClick={() => completeTask(task.taskId)}
           className="mr-4 flex-shrink-0"
         >
           {task.completed ? (
@@ -115,7 +121,7 @@ export default function Missions() {
           <FaEdit />
         </button>
         <button
-          onClick={() => handleDeleteTask(task.id)}
+          onClick={() => handleDeleteTask(task.taskId)}
           className="text-red-500 hover:text-red-400 p-1"
           title="Delete Mission"
         >
@@ -148,7 +154,7 @@ export default function Missions() {
           <div className="space-y-3">
             {incompleteTasks.length > 0 ? (
               incompleteTasks.map((task) => (
-                <TaskItemCard key={task.id} task={task} />
+                <TaskItemCard key={task.taskId} task={task} />
               ))
             ) : (
               <p className="text-sm text-gray-400 italic text-center py-4">
@@ -166,7 +172,7 @@ export default function Missions() {
           <div className="space-y-3">
             {completedTasks.length > 0 ? (
               completedTasks.map((task) => (
-                <TaskItemCard key={task.id} task={task} />
+                <TaskItemCard key={task.taskId} task={task} />
               ))
             ) : (
               <p className="text-sm text-gray-500 italic text-center py-4">
@@ -182,7 +188,7 @@ export default function Missions() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSave={(
-            taskData: Omit<PlayerTask, "id" | "completed" | "completedAt">,
+            taskData: Omit<PlayerTask, "taskId" | "completed" | "completedAt">,
             id?: string
           ) => {
             if (id) {
