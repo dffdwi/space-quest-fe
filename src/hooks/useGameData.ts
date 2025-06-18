@@ -115,6 +115,7 @@ export interface PlayerData {
     available: boolean;
   };
   stats: PlayerStats;
+  pendingInvitationCount?: number;
 }
 
 export const XP_PER_LEVEL = [
@@ -351,13 +352,14 @@ export const useGameData = (authUser: AuthUser | null) => {
               : null),
         },
         stats: profile.stats,
+        pendingInvitationCount: profile.pendingInvitationCount || 0,
       };
 
       setShopItems(gameConfig.shopItems);
       setAllBadges(gameConfig.badges);
 
       setPlayerData(combinedData);
-      console.log(combinedData);
+      // console.log(combinedData);
       if (!combinedData.dailyLogin.bonusClaimedToday) {
         api
           .post("/daily/check-in")

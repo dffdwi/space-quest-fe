@@ -11,12 +11,16 @@ import {
   FaStore,
   FaMapMarkedAlt,
   FaCog,
+  FaEnvelopeOpenText,
 } from "react-icons/fa";
+import { useGameData } from "@/hooks/useGameData";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { href: "/", icon: FaRocket, label: "Starship Dashboard" },
   { href: "/missions", icon: FaTasks, label: "Mission Logs" },
   { href: "/crew-projects", icon: FaUsersCog, label: "Crew Expeditions" },
+  { href: "/invitations", icon: FaEnvelopeOpenText, label: "Invitations" },
   { href: "/achievements", icon: FaShieldAlt, label: "Medal Bay" },
   { href: "/leaderboard", icon: FaCrown, label: "Hall of Fame" },
   { href: "/starmarket", icon: FaStore, label: "Star Market" },
@@ -26,6 +30,10 @@ const navItems = [
 
 const Sidebar = () => {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const { playerData } = useGameData(user);
+
+  const pendingInvitationCount = playerData?.pendingInvitationCount || 0;
 
   if (["/login", "/register"].includes(pathname)) {
     return null;
@@ -40,18 +48,32 @@ const Sidebar = () => {
         Space<span className="text-purple-400">Quest</span>
       </Link>
       <nav className="space-y-1.5 flex-grow">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`sidebar-link flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm ${
-              pathname === item.href ? "active" : ""
-            }`}
-          >
-            <item.icon className="w-5 h-5" />
-            <span>{item.label}</span>
-          </Link>
-        ))}
+        {navItems.map((item) => {
+          const isInvitationLink = item.href === "/invitations";
+          const showNotification =
+            isInvitationLink && pendingInvitationCount > 0;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`sidebar-link flex items-center justify-between space-x-3 px-4 py-2.5 rounded-lg text-sm ${
+                pathname === item.href ? "active" : ""
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <item.icon className="w-5 h-5" />
+                <span>{item.label}</span>
+              </div>
+              {showNotification && (
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </span>
+              )}
+            </Link>
+          );
+        })}
       </nav>
     </aside>
   );
