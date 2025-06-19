@@ -11,6 +11,7 @@ import {
   FaClipboardList,
   FaRocket,
   FaEdit,
+  FaUserPlus,
 } from "react-icons/fa";
 import AddTaskModal from "@/components/AddTaskModal";
 import InviteMemberModal, {
@@ -18,6 +19,17 @@ import InviteMemberModal, {
 } from "@/components/InviteMemberModal";
 import api from "@/lib/api";
 import AddMemberModal from "@/components/AddMemberModal";
+import CrewListModal from "@/components/CrewListModal";
+
+interface ProjectInvitationData {
+  invitee: {
+    userId: string;
+    name: string;
+    avatarUrl: string;
+  };
+  status: string;
+  role: string;
+}
 
 export interface ProjectMember {
   userId: string;
@@ -42,6 +54,7 @@ export interface CrewProject {
   members?: ProjectMember[];
   columns?: KanbanColumn[];
   tasks?: PlayerTask[];
+  invitations?: ProjectInvitationData[];
 }
 
 export default function CrewProjectsPage() {
@@ -57,6 +70,7 @@ export default function CrewProjectsPage() {
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
+  const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
 
   const selectedProject = projects.find(
     (p) => p.projectId === currentProjectId
@@ -139,36 +153,65 @@ export default function CrewProjectsPage() {
     [currentProjectId, selectedProject, addTask, editTask]
   );
 
-  const handleAddMember = useCallback(
+  // const handleAddMember = useCallback(
+  //   async (userId: string, role?: string) => {
+  //     if (!currentProjectId) return;
+  //     try {
+  //       await api.post(`/projects/${currentProjectId}/members`, {
+  //         userId,
+  //         role,
+  //       });
+  //       const response = await api.get(`/projects/${currentProjectId}`);
+  //       setProjects((prev) =>
+  //         prev.map((p) =>
+  //           p.projectId === currentProjectId ? response.data : p
+  //         )
+  //       );
+  //       setIsAddMemberModalOpen(false);
+  //       window.showGlobalNotification?.({
+  //         type: "success",
+  //         title: "Member Added!",
+  //         message: "The new member has been added to the expedition.",
+  //       });
+  //     } catch (error: any) {
+  //       console.error("Failed to add member:", error);
+  //       window.showGlobalNotification?.({
+  //         type: "error",
+  //         title: "Error",
+  //         message: error.response?.data?.message || "Could not add member.",
+  //       });
+  //     }
+  //   },
+  //   [currentProjectId, projects]
+  // );
+
+  const handleSendInvitation = useCallback(
     async (userId: string, role?: string) => {
       if (!currentProjectId) return;
       try {
-        await api.post(`/projects/${currentProjectId}/members`, {
+        await api.post(`/projects/${currentProjectId}/invitations`, {
           userId,
           role,
         });
-        const response = await api.get(`/projects/${currentProjectId}`);
-        setProjects((prev) =>
-          prev.map((p) =>
-            p.projectId === currentProjectId ? response.data : p
-          )
-        );
-        setIsAddMemberModalOpen(false);
+
         window.showGlobalNotification?.({
           type: "success",
-          title: "Member Added!",
-          message: "The new member has been added to the expedition.",
+          title: "Invitation Sent!",
+          message: "The invitation has been sent to the user.",
         });
+        setIsAddMemberModalOpen(false); // Tutup modal setelah berhasil
+        // Tidak perlu fetch ulang di sini, karena status anggota akan dilihat di halaman lain
       } catch (error: any) {
-        console.error("Failed to add member:", error);
+        console.error("Failed to send invitation:", error);
         window.showGlobalNotification?.({
           type: "error",
-          title: "Error",
-          message: error.response?.data?.message || "Could not add member.",
+          title: "Failed to Send",
+          message:
+            error.response?.data?.message || "Could not send the invitation.",
         });
       }
     },
-    [currentProjectId, projects]
+    [currentProjectId]
   );
 
   const handleDragStart = useCallback(
@@ -380,11 +423,18 @@ export default function CrewProjectsPage() {
           </div>
           <div className="flex space-x-2 mt-3 sm:mt-0">
             <button
-              onClick={() => setIsAddMemberModalOpen(true)}
+              onClick={() => setIsCrewModalOpen(true)}
               className="btn btn-primary text-sm flex items-center"
               disabled={!currentProjectId}
             >
               <FaUsers className="mr-2" /> Manage Crew
+            </button>
+            <button
+              onClick={() => setIsAddMemberModalOpen(true)}
+              className="btn btn-primary text-sm flex items-center"
+              disabled={!currentProjectId}
+            >
+              <FaUserPlus className="mr-2" /> Recruit Crew
             </button>
             <button
               onClick={openCreateTaskModalForProject}
@@ -535,9 +585,17 @@ export default function CrewProjectsPage() {
         <AddMemberModal
           isOpen={isAddMemberModalOpen}
           onClose={() => setIsAddMemberModalOpen(false)}
-          onAddMember={handleAddMember}
+          onAddMember={handleSendInvitation}
           projectName={selectedProject.name}
           existingMembers={selectedProject.members || []}
+        />
+      )}
+      {isCrewModalOpen && selectedProject && (
+        <CrewListModal
+          isOpen={isCrewModalOpen}
+          onClose={() => setIsCrewModalOpen(false)}
+          members={selectedProject.members || []}
+          invitations={selectedProject.invitations || []}
         />
       )}
     </div>

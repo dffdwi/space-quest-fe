@@ -124,7 +124,7 @@ export default function LoginPage() {
             </div>
 
             <button type="submit" disabled={isLoading} className="auth-btn">
-              {isLoading ? "Authenticating..." : "Engage"}
+              {isLoading ? "Authenticating..." : "Login"}
             </button>
           </form>
 

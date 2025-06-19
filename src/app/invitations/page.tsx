@@ -52,7 +52,6 @@ export default function InvitationsPage() {
   ) => {
     try {
       await api.put(`/invitations/${invitationId}/${action}`);
-      // Hapus undangan dari daftar UI setelah direspons
       setInvitations((prev) =>
         prev.filter((inv) => inv.invitationId !== invitationId)
       );
@@ -61,7 +60,6 @@ export default function InvitationsPage() {
         title: `Invitation ${action === "accept" ? "Accepted" : "Rejected"}`,
         message: `You have successfully ${action}ed the invitation.`,
       });
-      // Redirect ke halaman proyek jika menerima
       if (action === "accept") {
         const acceptedInvitation = invitations.find(
           (inv) => inv.invitationId === invitationId
