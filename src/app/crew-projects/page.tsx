@@ -20,6 +20,7 @@ import InviteMemberModal, {
 import api from "@/lib/api";
 import AddMemberModal from "@/components/AddMemberModal";
 import CrewListModal from "@/components/CrewListModal";
+import AddExpeditionModal from "@/components/AddExpeditionModal";
 
 interface ProjectInvitationData {
   invitee: {
@@ -71,6 +72,7 @@ export default function CrewProjectsPage() {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
+  const [isExpeditionModalOpen, setIsExpeditionModalOpen] = useState(false);
 
   const selectedProject = projects.find(
     (p) => p.projectId === currentProjectId
@@ -78,34 +80,31 @@ export default function CrewProjectsPage() {
 
   const projectTasks = selectedProject?.tasks || [];
 
-  const handleCreateProject = useCallback(async () => {
-    if (!playerData) return;
-
-    const projectCount = projects.length + 1;
-    const newProjectData = {
-      name: `Expedition #${projectCount}`,
-      description: "Charted for new discoveries.",
-    };
-
-    try {
-      const response = await api.post("/projects", newProjectData);
-      const createdProject = response.data;
-      setProjects((prev) => [...prev, createdProject]);
-      setCurrentProjectId(createdProject.projectId);
-      window.showGlobalNotification?.({
-        type: "success",
-        title: "New Expedition Charted!",
-        message: `"${createdProject.name}" is now active and saved.`,
-      });
-    } catch (error) {
-      console.error("Gagal membuat proyek baru:", error);
-      window.showGlobalNotification?.({
-        type: "error",
-        title: "Failed to Chart Expedition",
-        message: "Could not save the new expedition to the server.",
-      });
-    }
-  }, [playerData, projects]);
+  const handleCreateProject = useCallback(
+    async (data: { name: string; description: string }) => {
+      if (!playerData) return;
+      try {
+        const response = await api.post("/projects", data);
+        const createdProject = response.data;
+        setProjects((prev) => [...prev, createdProject]);
+        setCurrentProjectId(createdProject.projectId);
+        setIsExpeditionModalOpen(false); // Tutup modal setelah berhasil
+        window.showGlobalNotification?.({
+          type: "success",
+          title: "New Expedition Charted!",
+          message: `"${createdProject.name}" is now active and saved.`,
+        });
+      } catch (error) {
+        console.error("Gagal membuat proyek baru:", error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Failed to Chart Expedition",
+          message: "Could not save the new expedition to the server.",
+        });
+      }
+    },
+    [playerData]
+  );
 
   const openCreateTaskModalForProject = useCallback(() => {
     if (!currentProjectId) {
@@ -380,9 +379,17 @@ export default function CrewProjectsPage() {
         <p className="text-gray-400 mb-6">
           Assemble your crew and embark on a new expedition!
         </p>
-        <button onClick={handleCreateProject} className="btn btn-primary">
+        <button
+          onClick={() => setIsExpeditionModalOpen(true)}
+          className="btn btn-primary"
+        >
           <FaPlus className="mr-2" /> Plan New Expedition
         </button>
+        <AddExpeditionModal
+          isOpen={isExpeditionModalOpen}
+          onClose={() => setIsExpeditionModalOpen(false)}
+          onSave={handleCreateProject}
+        />
       </div>
     );
   }
@@ -414,7 +421,7 @@ export default function CrewProjectsPage() {
               </span>
             )}
             <button
-              onClick={handleCreateProject}
+              onClick={() => setIsExpeditionModalOpen(true)}
               className="btn btn-success text-sm !px-2 !py-1"
               title="Chart New Expedition"
             >
@@ -598,6 +605,11 @@ export default function CrewProjectsPage() {
           invitations={selectedProject.invitations || []}
         />
       )}
+      <AddExpeditionModal
+        isOpen={isExpeditionModalOpen}
+        onClose={() => setIsExpeditionModalOpen(false)}
+        onSave={handleCreateProject}
+      />
     </div>
   );
 }
