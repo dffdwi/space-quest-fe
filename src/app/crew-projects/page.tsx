@@ -60,8 +60,14 @@ export interface CrewProject {
 
 export default function CrewProjectsPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { playerData, isLoadingData, addTask, editTask, completeTask } =
-    useGameData(user);
+  const {
+    playerData,
+    isLoadingData,
+    addTask,
+    editTask,
+    completeTask,
+    claimProjectTaskReward,
+  } = useGameData(user);
   const router = useRouter();
 
   const [projects, setProjects] = useState<CrewProject[]>([]);
@@ -243,58 +249,44 @@ export default function CrewProjectsPage() {
       e.preventDefault();
       const taskId = draggedTaskId || e.dataTransfer.getData("taskId");
 
-      const currentColumnEl = document.querySelector(
-        `.kanban-column[data-column-id="${dragOverColumnId}"]`
-      );
-      currentColumnEl?.classList.remove("drag-over-column-highlight");
       setDraggedTaskId(null);
       setDragOverColumnId(null);
 
       if (!taskId || !selectedProject) return;
 
-      const taskToMove = selectedProject.tasks?.find(
-        (t) => t.taskId === taskId
-      );
+      const taskToMove = projectTasks.find((t) => t.taskId === taskId);
       if (!taskToMove || taskToMove.status === targetColumnId) {
         return;
       }
 
       try {
+        // 1. Panggil API untuk memindahkan tugas
         await api.put(`/tasks/${taskId}/move`, { newStatus: targetColumnId });
-        setProjects((prevProjects) =>
-          prevProjects.map((p) => {
-            if (p.projectId === selectedProject.projectId && p.tasks) {
-              return {
-                ...p,
-                tasks: p.tasks.map((t) =>
-                  t.taskId === taskId ? { ...t, status: targetColumnId } : t
-                ),
-              };
-            }
-            return p;
-          })
-        );
 
-        const targetColumn = selectedProject.columns?.find(
-          (c) => c.columnId === targetColumnId
+        // 2. Jika dipindahkan ke kolom 'done', panggil API untuk klaim hadiah
+        if (targetColumnId === "done" && !taskToMove.isRewardClaimed) {
+          await claimProjectTaskReward(taskId);
+        }
+
+        // 3. Fetch ulang detail proyek untuk mendapatkan data terbaru dan sinkron
+        const response = await api.get(
+          `/projects/${selectedProject.projectId}`
         );
-        window.showGlobalNotification?.({
-          type: "info",
-          title: "Objective Relocated",
-          message: `Objective "${taskToMove.title}" moved to ${
-            targetColumn?.title || targetColumnId
-          }.`,
-        });
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.projectId === selectedProject.projectId ? response.data : p
+          )
+        );
       } catch (error) {
-        console.error("Gagal memindahkan tugas:", error);
+        console.error("Gagal memindahkan atau klaim tugas:", error);
         window.showGlobalNotification?.({
           type: "error",
-          title: "Move Failed",
-          message: "Could not update the task status on the server.",
+          title: "Action Failed",
+          message: "Could not move the objective.",
         });
       }
     },
-    [draggedTaskId, dragOverColumnId, selectedProject, projects]
+    [draggedTaskId, selectedProject, projectTasks, claimProjectTaskReward]
   );
 
   const formatDate = useCallback((dateString?: string) => {
@@ -518,7 +510,13 @@ export default function CrewProjectsPage() {
                             : "Flexible"}
                         </p>
                         <div className="mt-2 flex items-center justify-between">
-                          <span className="text-xs text-purple-400 font-semibold">
+                          <span
+                            className={`text-xs font-semibold transition-opacity ${
+                              task.isRewardClaimed
+                                ? "opacity-50 text-gray-500 line-through"
+                                : "text-purple-400"
+                            }`}
+                          >
                             +{task.xp} XP
                           </span>
                           {task.assignedTo &&

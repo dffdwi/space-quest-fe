@@ -44,7 +44,8 @@ export default function Missions() {
     );
   }
 
-  const personalTasks = playerData.tasks.filter((t) => !t.projectId);
+  const personalTasks = playerData.tasks.filter((t) => t.type === "personal");
+
   const incompleteTasks = personalTasks
     .filter((t) => !t.completed)
     .sort((a, b) =>

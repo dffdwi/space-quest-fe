@@ -38,6 +38,8 @@ export interface PlayerTask {
   projectId?: string | null;
   status?: string;
   assignedTo?: string | null;
+  type?: "personal" | "project";
+  isRewardClaimed?: boolean;
 }
 
 export interface PlayerMission {
@@ -917,6 +919,46 @@ export const useGameData = (authUser: AuthUser | null) => {
     }
   }, [playerData, fetchGameData]);
 
+  const claimProjectTaskReward = useCallback(
+    async (taskId: string) => {
+      if (!playerData) return;
+
+      try {
+        const response = await api.post(`/tasks/${taskId}/claim-reward`);
+        const { task: updatedTask, eventResult } = response.data;
+
+        if (eventResult) {
+          window.showGlobalNotification?.({
+            type: "success",
+            title: "Reward Claimed!",
+            message: `You gained +${updatedTask.xp} XP & +${updatedTask.credits} CP.`,
+            icon: FaTrophy,
+          });
+          if (eventResult.leveledUp) {
+            window.showGlobalNotification?.({
+              type: "quest",
+              title: "Promotion!",
+              message: `Reached Command Level ${eventResult.leveledUp.to}!`,
+              icon: FaUserShield,
+            });
+          }
+        }
+
+        await fetchGameData();
+      } catch (error: any) {
+        console.error(`Gagal klaim hadiah tugas proyek ${taskId}:`, error);
+        window.showGlobalNotification?.({
+          type: "error",
+          title: "Claim Failed",
+          message:
+            error.response?.data?.message ||
+            "Could not claim the reward for this objective.",
+        });
+      }
+    },
+    [playerData, fetchGameData]
+  );
+
   return {
     playerData,
     isLoadingData,
@@ -936,5 +978,6 @@ export const useGameData = (authUser: AuthUser | null) => {
     SHOP_ITEMS_CONFIG: shopItems,
     ALL_BADGES_CONFIG: allBadges,
     claimDailyDiscovery,
+    claimProjectTaskReward,
   };
 };

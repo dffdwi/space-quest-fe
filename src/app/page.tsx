@@ -200,7 +200,7 @@ export default function DashboardPage() {
                       {task.title}
                     </span>
                     <p className="text-xs text-gray-400">
-                      {task.category || "General Scan"} - Due: Today
+                      {task.category || "Not-Set"} - Due: Today
                     </p>
                   </div>
                 </div>
