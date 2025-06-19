@@ -98,7 +98,7 @@ const AppHeader = () => {
       : 0;
 
   return (
-    <header className="mb-8 sticky top-0 bg-gray-800 pt-6 pb-4 z-50 -mx-6 md:-mx-8 px-6 md:px-8 border-b border-gray-700">
+    <header className="sticky top-0 bg-gray-800 pt-6 pb-4 z-50 -mx-6 md:-mx-8 px-6 md:px-8 border-b border-gray-700">
       <div className="flex px-6 flex-col sm:flex-row justify-between items-center">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-100">

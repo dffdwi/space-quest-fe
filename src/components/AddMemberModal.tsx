@@ -51,7 +51,9 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
   );
 
   useEffect(() => {
-    searchUsers("");
+    if (isOpen) {
+      searchUsers("");
+    }
   }, [isOpen, searchUsers]);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -94,7 +96,9 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
         </form>
 
         <div className="space-y-2 max-h-60 overflow-y-auto">
-          {isLoading && <p>Searching...</p>}
+          {isLoading && (
+            <p className="text-center text-gray-400">Searching...</p>
+          )}
           {!isLoading &&
             users.map((user) => (
               <div
@@ -137,7 +141,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
             disabled={!selectedUser}
             className="btn btn-primary"
           >
-            <FaUserPlus className="mr-2" /> Add to Project
+            <FaUserPlus className="mr-2" /> Send Invitation
           </button>
         </div>
       </div>
