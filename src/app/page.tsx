@@ -12,15 +12,14 @@ import {
   FaCheckCircle,
   FaAward,
   FaTrophy,
+  FaUser,
+  FaUsersCog,
 } from "react-icons/fa";
-import {
-  useGameData,
-  PlayerTask,
-  ALL_BADGES_CONFIG,
-  XP_PER_LEVEL,
-} from "@/hooks/useGameData";
+import { useGameData, PlayerTask, XP_PER_LEVEL } from "@/hooks/useGameData";
 import AddTaskModal from "@/components/AddTaskModal";
 import StatsChart from "@/components/StatsChart";
+import Link from "next/link";
+import IconFactory from "@/components/IconFactory";
 
 export default function DashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -30,14 +29,13 @@ export default function DashboardPage() {
     completeTask,
     addTask,
     editTask,
-    updatePlayerData,
     claimMissionReward,
+    ALL_BADGES_CONFIG,
     claimDailyDiscovery,
   } = useGameData(user);
   const router = useRouter();
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<PlayerTask | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -45,70 +43,18 @@ export default function DashboardPage() {
     }
   }, [authLoading, user, router]);
 
-  const openCreateModal = () => {
-    setEditingTask(null);
-    setIsTaskModalOpen(true);
-  };
-
   const handleTaskSave = (
     taskData: Omit<PlayerTask, "taskId" | "completed" | "completedAt">,
     id?: string
   ) => {
-    if (id) {
-      editTask(id, taskData);
-    } else {
-      const { status, ...rest } = taskData;
-      addTask({ ...rest, projectId: null });
+    if (!id) {
+      addTask({
+        ...taskData,
+        projectId: null,
+        assignedTo: null,
+      });
     }
     setIsTaskModalOpen(false);
-  };
-
-  const handleClaimDailyDiscovery = () => {
-    if (!playerData?.dailyDiscovery.available) {
-      window.showGlobalNotification?.({
-        type: "info",
-        title: "Already Claimed",
-        message: "Supply drop has already been claimed for today.",
-      });
-      return;
-    }
-    const rewardCredits = Math.floor(Math.random() * 20) + 10;
-    const rewardXp = Math.floor(Math.random() * 25) + 15;
-
-    updatePlayerData((prev) => {
-      if (!prev) return {};
-      const newCredits = prev.credits + rewardCredits;
-      const newXp = prev.xp + rewardXp;
-      let newLevel = prev.level;
-      while (
-        newLevel < XP_PER_LEVEL.length - 1 &&
-        newXp >= XP_PER_LEVEL[newLevel]
-      ) {
-        newLevel++;
-        window.showGlobalNotification?.({
-          type: "quest",
-          title: "Promotion!",
-          message: `Your daily discovery propelled you to Level ${newLevel}!`,
-        });
-      }
-
-      return {
-        credits: newCredits,
-        xp: newXp,
-        level: newLevel,
-        dailyDiscovery: {
-          ...prev.dailyDiscovery,
-          available: false,
-          lastClaimedDate: new Date().toISOString().split("T")[0],
-        },
-      };
-    });
-    window.showGlobalNotification?.({
-      type: "success",
-      title: "Supply Drop Acquired!",
-      message: `You found +${rewardCredits} CP and +${rewardXp} XP!`,
-      icon: FaGift,
-    });
   };
 
   if (authLoading || isLoadingData || !playerData) {
@@ -134,92 +80,119 @@ export default function DashboardPage() {
     today.getDate() + 1
   );
 
-  const tasksToday = playerData.tasks
-    .filter((t) => {
-      if (!t.dueDate || t.completed || t.projectId) {
-        return false;
-      }
-      const taskDueDate = new Date(t.dueDate);
-      return taskDueDate >= startOfDay && taskDueDate < endOfDay;
-    })
-    .slice(0, 3);
-  const getRandomSpaceTip = () => {
-    const tips = [
-      "A clean cockpit is a productive cockpit.",
-      "Remember to check your oxygen levels (and take breaks!).",
-      "Even small asteroid hauls contribute to the mission.",
-      "Always have a backup plan for alien encounters.",
-      "The universe rewards consistent effort.",
-    ];
-    return tips[Math.floor(Math.random() * tips.length)];
-  };
+  const allTasksToday = playerData.tasks.filter((t) => {
+    if (!t.dueDate || t.completed) return false;
+    const taskDueDate = new Date(t.dueDate);
+    return taskDueDate >= startOfDay && taskDueDate < endOfDay;
+  });
 
-  const latestBadgeId =
+  const personalTasksToday = allTasksToday
+    .filter((t) => t.type === "personal")
+    .slice(0, 3);
+  const projectTasksToday = allTasksToday
+    .filter((t) => t.type === "project")
+    .slice(0, 3);
+
+  const latestBadge =
     playerData.earnedBadgeIds.length > 0
-      ? playerData.earnedBadgeIds[playerData.earnedBadgeIds.length - 1]
+      ? ALL_BADGES_CONFIG.find(
+          (b) =>
+            b.badgeId ===
+            playerData.earnedBadgeIds[playerData.earnedBadgeIds.length - 1]
+        )
       : null;
-  const latestBadge = latestBadgeId
-    ? ALL_BADGES_CONFIG.find((b) => b.badgeId === latestBadgeId)
-    : null;
-  const BadgeIcon = latestBadge?.icon || FaAward;
 
   return (
     <div className="space-y-6">
       <section className="card p-5 md:p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-100">
-            🚀 Today's Flight Plan (Personal)
+            <FaRocket className="inline-block mr-3 text-purple-400" />
+            Today's Flight Plan
           </h2>
           <button
-            onClick={openCreateModal}
-            className="btn btn-primary text-xs sm:text-sm"
+            onClick={() => setIsTaskModalOpen(true)}
+            className="btn btn-primary text-xs sm:text-sm flex items-center"
           >
-            <FaPlus className="mr-1 sm:mr-2" /> Add Log Entry
+            <FaPlus className="mr-1 sm:mr-2" /> Add Personal Log
           </button>
         </div>
-        <div className="space-y-3">
-          {tasksToday.length > 0 ? (
-            tasksToday.map((task) => (
-              <div
-                key={task.taskId}
-                className="task-item-bg flex items-center justify-between p-3.5 bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600 transition-all"
-              >
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={() => completeTask(task.taskId)}
-                    className="form-checkbox h-5 w-5 text-purple-400 rounded focus:ring-purple-500 focus:ring-offset-gray-800 mr-3 cursor-pointer bg-gray-800 border-gray-600"
-                  />
-                  <div>
-                    <span
-                      className={`font-medium text-gray-200 ${
-                        task.completed ? "line-through" : ""
-                      }`}
-                    >
+
+        {/* Bagian Personal */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-sky-300 mb-3 flex items-center">
+            <FaUser className="mr-2" />
+            Personal
+          </h3>
+          <div className="space-y-3">
+            {personalTasksToday.length > 0 ? (
+              personalTasksToday.map((task) => (
+                <div
+                  key={task.taskId}
+                  className="task-item-bg flex items-center justify-between p-3.5 bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600"
+                >
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={task.completed}
+                      onChange={() => completeTask(task.taskId)}
+                      className="form-checkbox h-5 w-5 text-purple-400 rounded focus:ring-purple-500 mr-3 cursor-pointer bg-gray-800 border-gray-600"
+                    />
+                    <span className="font-medium text-gray-200">
                       {task.title}
                     </span>
-                    <p className="text-xs text-gray-400">
-                      {task.category || "Not-Set"} - Due: Today
-                    </p>
                   </div>
+                  <span className="text-xs font-semibold text-purple-300 bg-purple-600/30 px-2 py-1 rounded-full">
+                    +{task.xp} XP
+                  </span>
                 </div>
-                <span className="text-xs font-semibold text-purple-300 bg-purple-600/30 px-2.5 py-1 rounded-full">
-                  +{task.xp} XP
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-gray-400 italic text-center py-3">
-              No urgent personal missions. Systems stable, Commander.
-            </p>
-          )}
+              ))
+            ) : (
+              <p className="text-sm text-gray-400 italic px-2">
+                No personal logs due today.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Bagian Crew/Project */}
+        <div>
+          <h3 className="text-lg font-semibold text-green-300 mb-3 flex items-center">
+            <FaUsersCog className="mr-2" />
+            Crew Expeditions
+          </h3>
+          <div className="space-y-3">
+            {projectTasksToday.length > 0 ? (
+              projectTasksToday.map((task) => (
+                <Link
+                  href={`/crew-projects`}
+                  key={task.taskId}
+                  className="task-item-bg flex items-center justify-between p-3.5 bg-gray-700 hover:bg-gray-600 rounded-lg cursor-pointer"
+                >
+                  <div className="flex items-center">
+                    <FaUsersCog className="h-5 w-5 text-green-400 mr-3" />
+                    <span className="font-medium text-gray-200">
+                      {task.title}
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-green-300 bg-green-600/30 px-2 py-1 rounded-full">
+                    +{task.xp} XP
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <p className="text-sm text-gray-400 italic px-2">
+                No expedition objectives due today.
+              </p>
+            )}
+          </div>
         </div>
       </section>
 
       <section className="card p-5 md:p-6">
         <h2 className="text-xl font-semibold text-gray-100 mb-4">
-          🌌 Active & Completed Constellations (Quests)
+          <FaBookOpen className="inline-block mr-3 text-indigo-400" /> Active &
+          Completed Constellations (Quests)
         </h2>
         <div className="space-y-4">
           {playerData.missions.length > 0 ? (
@@ -274,11 +247,10 @@ export default function DashboardPage() {
                     <span className="text-xs text-gray-400 font-medium">
                       {mission.currentProgress}/{mission.target} Complete
                     </span>
-
                     {isCompleted && !isClaimed && (
                       <button
                         onClick={() => claimMissionReward(mission.missionId)}
-                        className="btn btn-warning text-xs !py-1 !px-3 animate-pulse"
+                        className="btn btn-warning text-xs !py-1 !px-3 animate-pulse flex items-center"
                       >
                         <FaTrophy className="mr-1.5" /> Claim Reward
                       </button>
@@ -321,14 +293,17 @@ export default function DashboardPage() {
               : "Supply Drop Claimed"}
           </p>
         </div>
-
         <div className="card p-5">
           <h2 className="text-lg font-semibold text-gray-100 mb-3">
-            ✨ Recent Commendation
+            <FaAward className="inline-block mr-2 text-amber-400" /> Recent
+            Commendation
           </h2>
           {latestBadge ? (
             <div className="flex items-center p-3 bg-gray-700 rounded-lg border border-gray-600">
-              <BadgeIcon className={`${latestBadge.color} text-3xl mr-4`} />
+              <IconFactory
+                iconName={latestBadge.icon}
+                className={`${latestBadge.color} text-3xl mr-4`}
+              />
               <div>
                 <p className="text-sm font-semibold text-gray-200">
                   {latestBadge.name}
@@ -344,45 +319,36 @@ export default function DashboardPage() {
             </p>
           )}
         </div>
-
         <div className="card p-4 bg-gray-800 border border-gray-700">
           <h3 className="font-semibold text-indigo-400 mb-1 text-sm">
             <FaLightbulb className="inline mr-2" />
             Captain's Log Entry:
           </h3>
-          <p className="text-xs text-gray-300 italic">{getRandomSpaceTip()}</p>
+          <p className="text-xs text-gray-300 italic">
+            The universe rewards consistent effort.
+          </p>
         </div>
       </div>
 
       <section className="card p-5">
         <h2 className="text-xl font-semibold text-gray-100 mb-4">
-          📊 Galactic Performance Metrics
+          Galactic Performance Metrics
         </h2>
-        <div>
-          <p className="text-sm text-gray-300 mb-1">
-            Objectives Cleared (Total):{" "}
-            <span className="font-bold text-indigo-400">
-              {playerData.stats.tasksCompleted}
-            </span>
-          </p>
-          <p className="text-sm text-gray-300 mb-1">
-            Current Mission Streak:{" "}
-            <span className="font-bold text-red-400">
-              {playerData.stats.currentMissionStreak} Cycles
-            </span>{" "}
-            {playerData.stats.currentMissionStreak > 0 ? "🔥" : ""}
-          </p>
-          <p className="text-sm text-gray-300 mb-1">
-            Longest Mission Streak:{" "}
-            <span className="font-bold text-red-400">
-              {playerData.stats.longestMissionStreak} Cycles
-            </span>
-          </p>
-
-          <div className="mt-4 h-64 md:h-72">
-            <StatsChart tasks={playerData.tasks} />
+        {playerData.stats ? (
+          <div>
+            <p className="text-sm text-gray-300 mb-1">
+              Objectives Cleared (Total):{" "}
+              <span className="font-bold text-indigo-400">
+                {playerData.stats.tasksCompleted}
+              </span>
+            </p>
+            <div className="mt-4 h-64 md:h-72">
+              <StatsChart tasks={playerData.tasks} />
+            </div>
           </div>
-        </div>
+        ) : (
+          <p className="text-sm text-gray-500">Stats data not available.</p>
+        )}
       </section>
 
       {isTaskModalOpen && (
@@ -390,8 +356,7 @@ export default function DashboardPage() {
           isOpen={isTaskModalOpen}
           onClose={() => setIsTaskModalOpen(false)}
           onSave={handleTaskSave}
-          existingTask={editingTask}
-          projectId={null}
+          existingTask={null}
         />
       )}
     </div>

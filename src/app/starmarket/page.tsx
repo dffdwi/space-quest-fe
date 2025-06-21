@@ -120,11 +120,11 @@ export default function StarMarketPage() {
                         actionIcon = <FaCheck className="mr-2" />;
                       }
                     } else if (!canAfford) {
-                      buttonText = "Your CP is not enough";
+                      buttonText = `${item.price} CP || Your CP is not enough`;
                       buttonClasses =
                         "btn-danger opacity-60 cursor-not-allowed !text-xs";
                       buttonDisabled = true;
-                      actionIcon = null;
+                      // actionIcon = null;
                     }
                     return (
                       <div
@@ -170,7 +170,7 @@ export default function StarMarketPage() {
                         <button
                           onClick={() => handlePurchase(item)}
                           disabled={buttonDisabled}
-                          className={`btn w-full mt-auto ${buttonClasses}`}
+                          className={`btn w-full mt-auto ${buttonClasses} flex items-center justify-center`}
                         >
                           {actionIcon}
                           {buttonText}

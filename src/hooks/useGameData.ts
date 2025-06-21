@@ -38,7 +38,7 @@ export interface PlayerTask {
   projectId?: string | null;
   status?: string;
   assignedTo?: string | null;
-  type?: "personal" | "project";
+  type?: string;
   isRewardClaimed?: boolean;
 }
 

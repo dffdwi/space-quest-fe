@@ -132,6 +132,9 @@ export default function Missions() {
     </div>
   );
 
+  console.log("All tasks from playerData:", playerData.tasks);
+  console.log("Filtered personal tasks:", personalTasks);
+
   return (
     <div className="space-y-8">
       <div className="card p-5 md:p-6 bg-gray-800 border-gray-700">
