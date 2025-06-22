@@ -1,11 +1,22 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useGameData, PlayerData } from "@/hooks/useGameData";
+import {
+  useGameData,
+  PlayerData,
+  ALL_BADGES_CONFIG,
+} from "@/hooks/useGameData";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
-import { FaCrown, FaRocket, FaUserShield, FaMedal } from "react-icons/fa";
+import {
+  FaCrown,
+  FaRocket,
+  FaUserShield,
+  FaMedal,
+  FaFire,
+} from "react-icons/fa";
 import api from "@/lib/api";
+import IconFactory from "@/components/IconFactory";
 
 interface LeaderboardEntry {
   userId: string;
@@ -14,6 +25,13 @@ interface LeaderboardEntry {
   level: number;
   xp: number;
   rank?: number;
+  loginStreak?: number;
+  badges?: {
+    badgeId: string;
+    name: string;
+    icon: string;
+    color: string;
+  }[];
 }
 
 export default function LeaderboardPage() {
@@ -54,7 +72,7 @@ export default function LeaderboardPage() {
     }
   }, [user]);
 
-  const leaderboardEntries = useMemo(() => {
+  const leaderboardEntries: LeaderboardEntry[] = useMemo(() => {
     if (!playerData || leaderboardData.length === 0) return [];
 
     const isPlayerInTopList = leaderboardData.some(
@@ -62,17 +80,23 @@ export default function LeaderboardPage() {
     );
 
     if (!isPlayerInTopList) {
-      const playerEntry = {
-        ...playerData,
+      const playerEntry: LeaderboardEntry = {
         userId: playerData.id.toString(),
-        rank: "...",
+        name: playerData.name,
+        avatarUrl: playerData.avatarUrl,
+        level: playerData.level,
+        xp: playerData.xp,
+        loginStreak: playerData.dailyLogin.streak,
+        badges: ALL_BADGES_CONFIG.filter((b) =>
+          playerData.earnedBadgeIds.includes(b.badgeId)
+        ),
+        rank: leaderboardData.length + 1,
       };
       return [...leaderboardData, playerEntry];
     }
 
     return leaderboardData;
-  }, [playerData, leaderboardData]);
-
+  }, [playerData, leaderboardData, ALL_BADGES_CONFIG]);
   if (authLoading || isLoadingData || isLeaderboardLoading || !playerData) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -138,24 +162,30 @@ export default function LeaderboardPage() {
                       )}
                     </span>
                     <img
-                      src={
-                        entry.avatarUrl
-                          ? entry.avatarUrl
-                          : "https://img.freepik.com/free-vector/cute-astronaut-riding-rocket-waving-hand-cartoon-icon-illustration-science-technology-icon-concept_138676-2130.jpg?semt=ais_hybrid&w=740"
-                      }
+                      src={entry.avatarUrl}
                       alt={entry.name}
                       className={`w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 ${
                         isCurrentUser ? "border-indigo-400" : "border-gray-500"
                       }`}
                     />
                     <div>
-                      <span
-                        className={`font-semibold text-base md:text-lg ${
-                          isCurrentUser ? "text-indigo-300" : "text-gray-200"
-                        }`}
-                      >
-                        {isCurrentUser ? `${entry.name} (You)` : entry.name}
-                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className={`font-semibold text-base md:text-lg ${
+                            isCurrentUser ? "text-indigo-300" : "text-gray-200"
+                          }`}
+                        >
+                          {isCurrentUser ? `${entry.name} (You)` : entry.name}
+                        </span>
+                        {entry.loginStreak && entry.loginStreak > 1 && (
+                          <span
+                            className="flex items-center text-xs font-bold text-amber-400 bg-amber-900/60 px-2 py-0.5 rounded-full"
+                            title={`Login Streak: ${entry.loginStreak} days`}
+                          >
+                            <FaFire className="mr-1" /> {entry.loginStreak}
+                          </span>
+                        )}
+                      </div>
                       <p
                         className={`text-xs ${
                           isCurrentUser ? "text-indigo-400" : "text-gray-400"
@@ -165,7 +195,8 @@ export default function LeaderboardPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
+
+                  <div className="flex flex-col items-end">
                     <span
                       className={`font-bold text-sm md:text-base ${
                         isCurrentUser ? "text-amber-300" : "text-amber-400"
@@ -173,12 +204,21 @@ export default function LeaderboardPage() {
                     >
                       {entry.xp.toLocaleString()} XP
                     </span>
-                    {isCurrentUser && (
-                      <FaUserShield
-                        className="text-indigo-400 text-xs inline ml-2"
-                        title="This is you!"
-                      />
-                    )}
+                    <div className="flex items-center space-x-1.5 mt-2">
+                      {(entry.badges || []).slice(0, 5).map((badge) => (
+                        <div key={badge.badgeId} title={badge.name}>
+                          <IconFactory
+                            iconName={badge.icon}
+                            className={`${badge.color} text-base`}
+                          />
+                        </div>
+                      ))}
+                      {(entry.badges || []).length > 5 && (
+                        <span className="text-xs text-gray-400 font-bold">
+                          ...
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
