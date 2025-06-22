@@ -95,6 +95,15 @@ export interface PlayerStats {
   logins: number;
 }
 
+export interface PlayerActivePowerUp {
+  activePowerUpId: string;
+  userId: string;
+  itemId: string;
+  usesLeft?: number;
+  expiresAt?: string;
+  item: ShopItem;
+}
+
 export interface PlayerData {
   id: string | number;
   name: string;
@@ -108,13 +117,6 @@ export interface PlayerData {
   purchasedShopItemIds: string[];
   activeTheme: string;
   avatarFrameId: string | null;
-  activePowerUps?: {
-    [powerUpId: string]: {
-      active: boolean;
-      usesLeft?: number;
-      expiresAt?: number;
-    };
-  };
   dailyLogin: {
     lastLoginDate: string | null;
     streak: number;
@@ -126,6 +128,7 @@ export interface PlayerData {
   };
   stats: PlayerStats;
   pendingInvitationCount?: number;
+  activePowerUps?: PlayerActivePowerUp[];
 }
 
 export const XP_PER_LEVEL = [
@@ -245,62 +248,6 @@ export let SHOP_ITEMS_CONFIG: ShopItem[] = [
   },
 ];
 
-const initialPlayerDataTemplate = (authUser: AuthUser | null): PlayerData => ({
-  id: authUser ? String(authUser.userId) : "defaultUser",
-  name: authUser?.name || authUser?.email?.split("@")[0] || "Explorer",
-  avatarUrl:
-    (authUser as any)?.photoURL ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      authUser?.name || authUser?.email || "S"
-    )}&background=7c3aed&color=fff&size=60`,
-  level: 1,
-  xp: 0,
-  credits: 1000,
-  tasks: [],
-  missions: [
-    {
-      missionId: "m_initial_steps",
-      title: "Initial Steps in the Cosmos",
-      description: "Complete 3 mission logs to understand your new journey.",
-      target: 3,
-      currentProgress: 0,
-      rewardXp: 75,
-      rewardCredits: 25,
-      rewardBadgeId: "b_explorer_initiate",
-      type: "once",
-      isClaimed: false,
-    },
-    {
-      missionId: "m_weekly_scan",
-      title: "Weekly Sector Scan",
-      description: "Complete 7 mission logs this week to map nearby sectors.",
-      target: 7,
-      currentProgress: 0,
-      rewardXp: 150,
-      rewardCredits: 50,
-      type: "weekly",
-      lastResetDate: new Date().toISOString(),
-      isClaimed: false,
-    },
-  ],
-  earnedBadgeIds: [],
-  purchasedShopItemIds: [],
-  activeTheme: "theme-dark",
-  avatarFrameId: null,
-  activePowerUps: {},
-  dailyLogin: { lastLoginDate: null, streak: 0, bonusClaimedToday: false },
-  dailyDiscovery: { lastClaimedDate: null, available: true },
-  stats: {
-    tasksCompleted: 0,
-    totalXpEarned: 0,
-    totalCreditsEarned: 100,
-    currentMissionStreak: 0,
-    longestMissionStreak: 0,
-    logins: 0,
-    lastStreakUpdateDate: undefined,
-  },
-});
-
 export const useGameData = (authUser: AuthUser | null) => {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -348,6 +295,7 @@ export const useGameData = (authUser: AuthUser | null) => {
         purchasedShopItemIds: (profile.inventory || []).map(
           (i: { itemId: string }) => i.itemId
         ),
+        activePowerUps: profile.activePowerUps,
         dailyLogin: {
           lastLoginDate: profile.lastLoginDate,
           streak: profile.loginStreak,
@@ -369,7 +317,7 @@ export const useGameData = (authUser: AuthUser | null) => {
       setAllBadges(gameConfig.badges);
 
       setPlayerData(combinedData);
-      // console.log(combinedData);
+      console.log(combinedData);
       if (!combinedData.dailyLogin.bonusClaimedToday) {
         api
           .post("/daily/check-in")
@@ -495,47 +443,6 @@ export const useGameData = (authUser: AuthUser | null) => {
       }
     },
     [playerData, updatePlayerData]
-  );
-
-  const consumePowerUp = useCallback(
-    (powerUpValue: string) => {
-      updatePlayerData((prev) => {
-        if (
-          !prev.activePowerUps ||
-          !prev.activePowerUps[powerUpValue]?.active
-        ) {
-          return {};
-        }
-
-        const powerUp = prev.activePowerUps[powerUpValue];
-        let usesLeft = powerUp.usesLeft;
-        let isActive = powerUp.active;
-
-        if (usesLeft !== undefined) {
-          usesLeft--;
-          if (usesLeft <= 0) {
-            isActive = false;
-            const item = SHOP_ITEMS_CONFIG.find(
-              (i) => i.value === powerUpValue
-            );
-            window.showGlobalNotification?.({
-              type: "info",
-              title: "Power-up Depleted",
-              message: `Efek dari "${item?.name || powerUpValue}" telah habis.`,
-              icon: FaFlask,
-            });
-          }
-        }
-
-        return {
-          activePowerUps: {
-            ...prev.activePowerUps,
-            [powerUpValue]: { ...powerUp, active: isActive, usesLeft },
-          },
-        };
-      });
-    },
-    [updatePlayerData]
   );
 
   const completeTask = useCallback(
@@ -973,7 +880,6 @@ export const useGameData = (authUser: AuthUser | null) => {
     getXpBoundaries,
     handleDailyLogin,
     purchaseShopItem,
-    consumePowerUp,
     updatePlayerProfile,
     applyTheme,
     applyAvatarFrame,

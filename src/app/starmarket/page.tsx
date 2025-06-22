@@ -86,7 +86,9 @@ export default function StarMarketPage() {
                         item.itemId === activeFrameId);
                     const isPowerUpActive =
                       item.type === "power_up" &&
-                      playerData.activePowerUps?.[item.value]?.active;
+                      playerData.activePowerUps?.find(
+                        (p) => p.item.value === item.value
+                      );
                     const canAfford = playerData.credits >= item.price;
                     const ItemIcon = item.icon || FaGift;
 

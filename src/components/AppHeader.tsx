@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FaCoins, FaFire } from "react-icons/fa";
+import { FaCoins, FaFire, FaFlask } from "react-icons/fa";
 import { useGameData, XP_PER_LEVEL } from "@/hooks/useGameData";
 
 const pageConfigs: {
@@ -169,6 +169,20 @@ const AppHeader = () => {
                 </div>
               </div>
             </div>
+            {playerData.activePowerUps &&
+              playerData.activePowerUps.find((p) =>
+                p.item.value.includes("xp_boost")
+              ) && (
+                <div
+                  className="text-center pl-2 border-l border-gray-600"
+                  title="XP Boost Active!"
+                >
+                  <FaFlask className="text-sky-400 text-lg md:text-xl mx-auto animate-pulse" />
+                  <span className="block text-xs font-semibold text-sky-300">
+                    x2 XP
+                  </span>
+                </div>
+              )}
             <div className="text-center pl-2 border-l border-gray-600">
               <FaCoins className="text-yellow-400 text-lg md:text-xl mx-auto" />
               <span className="block text-xs md:text-sm font-semibold text-gray-200">
