@@ -12,6 +12,7 @@ import {
   FaRocket,
   FaEdit,
   FaUserPlus,
+  FaUserClock,
 } from "react-icons/fa";
 import AddTaskModal from "@/components/AddTaskModal";
 import InviteMemberModal, {
@@ -21,6 +22,8 @@ import api from "@/lib/api";
 import AddMemberModal from "@/components/AddMemberModal";
 import CrewListModal from "@/components/CrewListModal";
 import AddExpeditionModal from "@/components/AddExpeditionModal";
+import RequestMoveModal from "@/components/RequestMoveModal";
+import ReviewMoveModal from "@/components/ReviewMoveModal";
 
 interface ProjectInvitationData {
   invitee: {
@@ -51,6 +54,7 @@ export interface KanbanColumn {
 export interface CrewProject {
   projectId: string;
   name: string;
+  ownerId: string;
   description?: string;
   members?: ProjectMember[];
   columns?: KanbanColumn[];
@@ -79,6 +83,36 @@ export default function CrewProjectsPage() {
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
   const [isCrewModalOpen, setIsCrewModalOpen] = useState(false);
   const [isExpeditionModalOpen, setIsExpeditionModalOpen] = useState(false);
+  const [isRequestMoveModalOpen, setIsRequestMoveModalOpen] = useState(false);
+  const [taskToMove, setTaskToMove] = useState<PlayerTask | null>(null);
+  const [targetMoveColumnId, setTargetMoveColumnId] = useState<string | null>(
+    null
+  );
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [taskToReview, setTaskToReview] = useState<PlayerTask | null>(null);
+
+  const handleReviewMove = async (action: "approve" | "reject") => {
+    if (!taskToReview) return;
+    try {
+      await api.post(`/tasks/${taskToReview.taskId}/review-move`, { action });
+
+      const response = await api.get(`/projects/${currentProjectId}`);
+      setProjects((prev) =>
+        prev.map((p) => (p.projectId === currentProjectId ? response.data : p))
+      );
+
+      window.showGlobalNotification?.({
+        type: "success",
+        title: "Request Reviewed",
+        message: `The move request has been ${action}d.`,
+      });
+    } catch (error) {
+      console.error("Gagal meninjau permintaan:", error);
+    } finally {
+      setIsReviewModalOpen(false);
+      setTaskToReview(null);
+    }
+  };
 
   const selectedProject = projects.find(
     (p) => p.projectId === currentProjectId
@@ -94,7 +128,7 @@ export default function CrewProjectsPage() {
         const createdProject = response.data;
         setProjects((prev) => [...prev, createdProject]);
         setCurrentProjectId(createdProject.projectId);
-        setIsExpeditionModalOpen(false); // Tutup modal setelah berhasil
+        setIsExpeditionModalOpen(false); 
         window.showGlobalNotification?.({
           type: "success",
           title: "New Expedition Charted!",
@@ -246,60 +280,92 @@ export default function CrewProjectsPage() {
   );
 
   const handleDrop = useCallback(
-    async (e: DragEvent<HTMLDivElement>, targetColumnId: string) => {
+    (e: DragEvent<HTMLDivElement>, targetColumnId: string) => {
       e.preventDefault();
       const taskId = draggedTaskId;
-      if (!taskId || !selectedProject || !selectedProject.columns) return;
+      if (!taskId || !selectedProject || !playerData) return;
 
-      const taskToMove = projectTasks.find((t) => t.taskId === taskId);
-      if (!taskToMove || taskToMove.status === targetColumnId) {
-        setDraggedTaskId(null);
-        setDragOverColumnId(null);
-        return;
+      const task = projectTasks.find((t) => t.taskId === taskId);
+      if (!task || task.status === targetColumnId) return;
+
+      const isOwner = selectedProject.ownerId === playerData.id;
+
+      if (isOwner) {
+        api
+          .put(`/tasks/${taskId}/move`, { newStatus: targetColumnId })
+          .then(() => {
+            const doneColumn = selectedProject.columns?.find((c) =>
+              c.title.toLowerCase().includes("done")
+            );
+            if (
+              doneColumn &&
+              targetColumnId === doneColumn.columnId &&
+              !task.isRewardClaimed
+            ) {
+              return claimProjectTaskReward(taskId);
+            }
+          })
+          .then(() => api.get(`/projects/${selectedProject.projectId}`))
+          .then((response) => {
+            setProjects((prev) =>
+              prev.map((p) =>
+                p.projectId === currentProjectId ? response.data : p
+              )
+            );
+          })
+          .catch((err) => console.error("Gagal memindahkan tugas:", err));
+      } else {
+        setTaskToMove(task);
+        setTargetMoveColumnId(targetColumnId);
+        setIsRequestMoveModalOpen(true);
       }
 
-      try {
-        await api.put(`/tasks/${taskId}/move`, { newStatus: targetColumnId });
-
-        const doneColumn = selectedProject.columns.find((c) =>
-          c.title.toLowerCase().includes("done")
-        );
-        if (
-          doneColumn &&
-          targetColumnId === doneColumn.columnId &&
-          !taskToMove.isRewardClaimed
-        ) {
-          await claimProjectTaskReward(taskId);
-        }
-
-        const response = await api.get(
-          `/projects/${selectedProject.projectId}`
-        );
-        setProjects((prev) =>
-          prev.map((p) =>
-            p.projectId === currentProjectId ? response.data : p
-          )
-        );
-      } catch (error) {
-        console.error("Gagal memindahkan atau klaim tugas:", error);
-        window.showGlobalNotification?.({
-          type: "error",
-          title: "Action Failed",
-          message: "Could not move the objective.",
-        });
-      } finally {
-        setDraggedTaskId(null);
-        setDragOverColumnId(null);
-      }
+      setDraggedTaskId(null);
+      setDragOverColumnId(null);
     },
     [
       draggedTaskId,
       selectedProject,
       projectTasks,
+      playerData,
       claimProjectTaskReward,
       currentProjectId,
     ]
   );
+
+  const handleRequestMoveSubmit = async (message: string) => {
+    if (!taskToMove || !targetMoveColumnId) return;
+
+    try {
+      await api.post(`/tasks/${taskToMove.taskId}/request-move`, {
+        targetStatus: targetMoveColumnId,
+        message: message,
+      });
+
+      const response = await api.get(`/projects/${currentProjectId}`);
+      setProjects((prev) =>
+        prev.map((p) => (p.projectId === currentProjectId ? response.data : p))
+      );
+
+      window.showGlobalNotification?.({
+        type: "success",
+        title: "Request Sent",
+        message: "Your request to move the task has been sent for approval.",
+      });
+    } catch (error) {
+      console.error("Gagal mengirim permintaan:", error);
+      window.showGlobalNotification?.({
+        type: "error",
+        title: "Request Failed",
+        message: "Could not send the move request.",
+      });
+    } finally {
+      setIsRequestMoveModalOpen(false);
+      setTaskToMove(null);
+      setTargetMoveColumnId(null);
+    }
+  };
+
   const formatDate = useCallback((dateString?: string) => {
     if (!dateString) return "Flexible";
     try {
@@ -491,13 +557,29 @@ export default function CrewProjectsPage() {
                     .map((task) => (
                       <div
                         key={task.taskId}
-                        draggable
+                        draggable={!task.statusChangeRequest}
                         onDragStart={(e) => handleDragStart(e, task.taskId)}
                         onDragEnd={handleDragEnd}
-                        className={`kanban-task-card bg-gray-700 border-gray-600 hover:border-indigo-500 p-3 rounded-md shadow-sm cursor-grab ${
+                        className={`kanban-task-card bg-gray-700 border-gray-600 p-3 rounded-md shadow-sm relative
+                        ${
+                          task.statusChangeRequest
+                            ? "opacity-70 border-dashed border-yellow-400"
+                            : "hover:border-indigo-500 cursor-grab"
+                        }
+                        ${
                           draggedTaskId === task.taskId ? "dragging-task" : ""
                         }`}
                       >
+                        {task.statusChangeRequest && (
+                          <div
+                            className="w-full bg-yellow-900/50 text-yellow-200 text-xs font-bold px-2 py-1 rounded-md mb-2 flex items-center"
+                            title="Awaiting approval to move"
+                          >
+                            <FaUserClock className="mr-2" />
+                            <span>Awaiting Approval</span>
+                          </div>
+                        )}
+
                         <div className="flex justify-between items-start mb-1">
                           <p className="task-title text-sm font-medium text-gray-100 break-words">
                             {task.title}
@@ -509,27 +591,35 @@ export default function CrewProjectsPage() {
                             <FaEdit />
                           </button>
                         </div>
-                        {task.description && (
-                          <p className="text-xs text-gray-400 mt-1 mb-2 break-words">
-                            {task.description.substring(0, 70)}
-                            {task.description.length > 70 && "..."}
-                          </p>
+
+                        {task.statusChangeMessage && (
+                          <div className="text-xs italic text-yellow-200 bg-yellow-900/50 p-2 rounded-md my-2">
+                            "{task.statusChangeMessage}"
+                          </div>
                         )}
+
                         <p className="task-meta text-gray-500 text-xs">
                           {task.dueDate
                             ? `Due: ${formatDate(task.dueDate)}`
                             : "Flexible"}
                         </p>
                         <div className="mt-2 flex items-center justify-between">
-                          <span
-                            className={`text-xs font-semibold transition-opacity ${
-                              task.isRewardClaimed
-                                ? "opacity-50 text-gray-500 line-through"
-                                : "text-purple-400"
-                            }`}
-                          >
-                            +{task.xp} XP
-                          </span>
+                          {task.statusChangeRequest &&
+                          playerData?.id === selectedProject?.ownerId ? (
+                            <button
+                              onClick={() => {
+                                setTaskToReview(task);
+                                setIsReviewModalOpen(true);
+                              }}
+                              className="btn btn-warning !py-1 !text-xs w-full"
+                            >
+                              Review Request
+                            </button>
+                          ) : (
+                            <span className={`text-xs font-semibold ...`}>
+                              +{task.xp} XP
+                            </span>
+                          )}
                           {task.assignedTo &&
                           selectedProject.members?.find(
                             (m) => m.userId === task.assignedTo
@@ -619,6 +709,37 @@ export default function CrewProjectsPage() {
         onClose={() => setIsExpeditionModalOpen(false)}
         onSave={handleCreateProject}
       />
+      {isRequestMoveModalOpen && taskToMove && targetMoveColumnId && (
+        <RequestMoveModal
+          isOpen={isRequestMoveModalOpen}
+          onClose={() => setIsRequestMoveModalOpen(false)}
+          onSubmit={handleRequestMoveSubmit}
+          taskTitle={taskToMove.title}
+          targetColumnName={
+            selectedProject?.columns?.find(
+              (c) => c.columnId === targetMoveColumnId
+            )?.title || ""
+          }
+        />
+      )}
+      {isReviewModalOpen && taskToReview && (
+        <ReviewMoveModal
+          isOpen={isReviewModalOpen}
+          onClose={() => setIsReviewModalOpen(false)}
+          onReview={handleReviewMove}
+          task={taskToReview}
+          requesterName={
+            selectedProject?.members?.find(
+              (m) => m.userId === taskToReview.statusChangeRequesterId
+            )?.name || "Unknown"
+          }
+          targetColumnName={
+            selectedProject?.columns?.find(
+              (c) => c.columnId === taskToReview.statusChangeRequest
+            )?.title || "Unknown"
+          }
+        />
+      )}
     </div>
   );
 }

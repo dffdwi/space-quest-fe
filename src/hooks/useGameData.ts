@@ -40,6 +40,9 @@ export interface PlayerTask {
   assignedTo?: string | null;
   type?: string;
   isRewardClaimed?: boolean;
+  statusChangeRequest?: string | null;
+  statusChangeRequesterId?: string | null;
+  statusChangeMessage?: string | null;
 }
 
 export interface PlayerMission {
