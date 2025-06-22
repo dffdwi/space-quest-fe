@@ -21,12 +21,12 @@ import {
   FaPalette,
   FaRedo,
   FaTrophy,
-  FaBolt,
 } from "react-icons/fa";
 import api from "@/lib/api";
 
 export interface PlayerTask {
   taskId: string;
+  userId?: string;
   title: string;
   description?: string;
   dueDate?: string;
@@ -43,6 +43,11 @@ export interface PlayerTask {
   statusChangeRequest?: string | null;
   statusChangeRequesterId?: string | null;
   statusChangeMessage?: string | null;
+  owner?: {
+    userId: string;
+    name: string;
+    avatarUrl: string;
+  };
 }
 
 export interface PlayerMission {

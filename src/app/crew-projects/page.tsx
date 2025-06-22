@@ -128,7 +128,7 @@ export default function CrewProjectsPage() {
         const createdProject = response.data;
         setProjects((prev) => [...prev, createdProject]);
         setCurrentProjectId(createdProject.projectId);
-        setIsExpeditionModalOpen(false); 
+        setIsExpeditionModalOpen(false);
         window.showGlobalNotification?.({
           type: "success",
           title: "New Expedition Charted!",
@@ -557,22 +557,33 @@ export default function CrewProjectsPage() {
                     .map((task) => (
                       <div
                         key={task.taskId}
-                        draggable={!task.statusChangeRequest}
+                        draggable={
+                          !task.statusChangeRequest &&
+                          (playerData?.id === selectedProject?.ownerId ||
+                            playerData?.id === task.userId)
+                        }
                         onDragStart={(e) => handleDragStart(e, task.taskId)}
                         onDragEnd={handleDragEnd}
                         className={`kanban-task-card bg-gray-700 border-gray-600 p-3 rounded-md shadow-sm relative
-                        ${
-                          task.statusChangeRequest
-                            ? "opacity-70 border-dashed border-yellow-400"
-                            : "hover:border-indigo-500 cursor-grab"
-                        }
-                        ${
-                          draggedTaskId === task.taskId ? "dragging-task" : ""
-                        }`}
+    ${
+      task.statusChangeRequest
+        ? "opacity-70 border-dashed border-yellow-400"
+        : "hover:border-indigo-500"
+    }
+    ${draggedTaskId === task.taskId ? "dragging-task" : ""}
+    ${
+      !(
+        !task.statusChangeRequest &&
+        (playerData?.id === selectedProject?.ownerId ||
+          playerData?.id === task.userId)
+      )
+        ? "cursor-not-allowed"
+        : "cursor-grab"
+    }`}
                       >
                         {task.statusChangeRequest && (
                           <div
-                            className="w-full bg-yellow-900/50 text-yellow-200 text-xs font-bold px-2 py-1 rounded-md mb-2 flex items-center"
+                            className="w-full bg-yellow-900/50 text-yellow-200 text-xs font-bold px-2 py-1 rounded-t-md mb-2 flex items-center -m-3 p-2 border-b border-yellow-700/50"
                             title="Awaiting approval to move"
                           >
                             <FaUserClock className="mr-2" />
@@ -603,6 +614,7 @@ export default function CrewProjectsPage() {
                             ? `Due: ${formatDate(task.dueDate)}`
                             : "Flexible"}
                         </p>
+
                         <div className="mt-2 flex items-center justify-between">
                           {task.statusChangeRequest &&
                           playerData?.id === selectedProject?.ownerId ? (
@@ -616,41 +628,38 @@ export default function CrewProjectsPage() {
                               Review Request
                             </button>
                           ) : (
-                            <span className={`text-xs font-semibold ...`}>
+                            <span
+                              className={`text-xs font-semibold transition-opacity ${
+                                task.isRewardClaimed
+                                  ? "opacity-50 text-gray-500 line-through"
+                                  : "text-purple-400"
+                              }`}
+                            >
                               +{task.xp} XP
                             </span>
                           )}
-                          {task.assignedTo &&
-                          selectedProject.members?.find(
-                            (m) => m.userId === task.assignedTo
-                          ) ? (
-                            <img
-                              src={
-                                selectedProject.members.find(
-                                  (m) => m.userId === task.assignedTo
-                                )?.avatarUrl
-                              }
-                              alt={
-                                selectedProject.members.find(
-                                  (m) => m.userId === task.assignedTo
-                                )?.name
-                              }
-                              title={
-                                selectedProject.members.find(
-                                  (m) => m.userId === task.assignedTo
-                                )?.name
-                              }
-                              className="assigned-avatar w-6 h-6 bg-gray-600 text-gray-200"
-                            />
-                          ) : task.assignedTo ? (
-                            <span
-                              className="assigned-avatar w-6 h-6 bg-gray-600 text-gray-400 text-xs flex items-center justify-center"
-                              title="Unknown Assignee"
+
+                          {task.owner ? (
+                            <div
+                              className="flex items-center"
+                              title={`Assigned to: ${task.owner.name}`}
                             >
-                              ?
-                            </span>
+                              <img
+                                src={
+                                  task.owner.avatarUrl ||
+                                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                    task.owner.name || "A"
+                                  )}&background=random&color=fff&size=40`
+                                }
+                                alt={task.owner.name}
+                                className="w-6 h-6 rounded-full bg-gray-600 object-cover"
+                              />
+                              <span className="ml-2 hidden text-xs text-gray-400 sm:block">
+                                {task.owner.name}
+                              </span>
+                            </div>
                           ) : (
-                            <div className="w-6 h-6"></div>
+                            <div className="h-6 w-6" />
                           )}
                         </div>
                       </div>
