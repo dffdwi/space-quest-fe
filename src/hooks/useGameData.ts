@@ -927,36 +927,32 @@ export const useGameData = (authUser: AuthUser | null) => {
         const response = await api.post(`/tasks/${taskId}/claim-reward`);
         const { task: updatedTask, eventResult } = response.data;
 
-        if (eventResult) {
-          window.showGlobalNotification?.({
-            type: "success",
-            title: "Reward Claimed!",
-            message: `You gained +${updatedTask.xp} XP & +${updatedTask.credits} CP.`,
-            icon: FaTrophy,
-          });
-          if (eventResult.leveledUp) {
-            window.showGlobalNotification?.({
-              type: "quest",
-              title: "Promotion!",
-              message: `Reached Command Level ${eventResult.leveledUp.to}!`,
-              icon: FaUserShield,
-            });
-          }
-        }
+        window.showGlobalNotification?.({
+          type: "success",
+          title: "Reward Claimed!",
+          message: `Reward for "${updatedTask.title}" has been claimed.`,
+          icon: FaTrophy,
+        });
 
-        await fetchGameData();
+        if (eventResult?.leveledUp) {
+          window.showGlobalNotification?.({
+            type: "quest",
+            title: "Promotion!",
+            message: `Reward propelled a crew member to Level ${eventResult.leveledUp.to}!`,
+            icon: FaUserShield,
+          });
+        }
       } catch (error: any) {
         console.error(`Gagal klaim hadiah tugas proyek ${taskId}:`, error);
         window.showGlobalNotification?.({
           type: "error",
           title: "Claim Failed",
           message:
-            error.response?.data?.message ||
-            "Could not claim the reward for this objective.",
+            error.response?.data?.message || "Could not claim the reward.",
         });
       }
     },
-    [playerData, fetchGameData]
+    [playerData]
   );
 
   return {

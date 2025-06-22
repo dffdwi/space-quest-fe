@@ -140,6 +140,7 @@ export default function CrewProjectsPage() {
     ) => {
       if (!currentProjectId || !selectedProject || !selectedProject.columns)
         return;
+
       const defaultStatus = selectedProject.columns[0]?.columnId || "todo";
 
       const payload = {
@@ -247,34 +248,36 @@ export default function CrewProjectsPage() {
   const handleDrop = useCallback(
     async (e: DragEvent<HTMLDivElement>, targetColumnId: string) => {
       e.preventDefault();
-      const taskId = draggedTaskId || e.dataTransfer.getData("taskId");
-
-      setDraggedTaskId(null);
-      setDragOverColumnId(null);
-
-      if (!taskId || !selectedProject) return;
+      const taskId = draggedTaskId;
+      if (!taskId || !selectedProject || !selectedProject.columns) return;
 
       const taskToMove = projectTasks.find((t) => t.taskId === taskId);
       if (!taskToMove || taskToMove.status === targetColumnId) {
+        setDraggedTaskId(null);
+        setDragOverColumnId(null);
         return;
       }
 
       try {
-        // 1. Panggil API untuk memindahkan tugas
         await api.put(`/tasks/${taskId}/move`, { newStatus: targetColumnId });
 
-        // 2. Jika dipindahkan ke kolom 'done', panggil API untuk klaim hadiah
-        if (targetColumnId === "done" && !taskToMove.isRewardClaimed) {
+        const doneColumn = selectedProject.columns.find((c) =>
+          c.title.toLowerCase().includes("done")
+        );
+        if (
+          doneColumn &&
+          targetColumnId === doneColumn.columnId &&
+          !taskToMove.isRewardClaimed
+        ) {
           await claimProjectTaskReward(taskId);
         }
 
-        // 3. Fetch ulang detail proyek untuk mendapatkan data terbaru dan sinkron
         const response = await api.get(
           `/projects/${selectedProject.projectId}`
         );
         setProjects((prev) =>
           prev.map((p) =>
-            p.projectId === selectedProject.projectId ? response.data : p
+            p.projectId === currentProjectId ? response.data : p
           )
         );
       } catch (error) {
@@ -284,11 +287,19 @@ export default function CrewProjectsPage() {
           title: "Action Failed",
           message: "Could not move the objective.",
         });
+      } finally {
+        setDraggedTaskId(null);
+        setDragOverColumnId(null);
       }
     },
-    [draggedTaskId, selectedProject, projectTasks, claimProjectTaskReward]
+    [
+      draggedTaskId,
+      selectedProject,
+      projectTasks,
+      claimProjectTaskReward,
+      currentProjectId,
+    ]
   );
-
   const formatDate = useCallback((dateString?: string) => {
     if (!dateString) return "Flexible";
     try {
@@ -363,7 +374,7 @@ export default function CrewProjectsPage() {
 
   if (projects.length === 0) {
     return (
-      <div className="card p-6 text-center">
+      <div className="card p-6 text-center flex flex-col items-center justify-center">
         <FaUsersCog className="text-6xl text-indigo-400 mx-auto mb-4" />
         <h2 className="text-2xl font-semibold mb-2 text-gray-100">
           No Expeditions Launched
@@ -373,7 +384,7 @@ export default function CrewProjectsPage() {
         </p>
         <button
           onClick={() => setIsExpeditionModalOpen(true)}
-          className="btn btn-primary"
+          className="btn btn-primary flex justify-center items-center"
         >
           <FaPlus className="mr-2" /> Plan New Expedition
         </button>

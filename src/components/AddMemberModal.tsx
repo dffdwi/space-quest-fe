@@ -139,7 +139,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
           <button
             onClick={handleAddClick}
             disabled={!selectedUser}
-            className="btn btn-primary"
+            className="btn btn-primary flex justify-center items-center"
           >
             <FaUserPlus className="mr-2" /> Send Invitation
           </button>
