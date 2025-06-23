@@ -13,6 +13,7 @@ import {
   FaEdit,
   FaUserPlus,
   FaUserClock,
+  FaMedal,
 } from "react-icons/fa";
 import AddTaskModal from "@/components/AddTaskModal";
 import InviteMemberModal, {
@@ -24,6 +25,7 @@ import CrewListModal from "@/components/CrewListModal";
 import AddExpeditionModal from "@/components/AddExpeditionModal";
 import RequestMoveModal from "@/components/RequestMoveModal";
 import ReviewMoveModal from "@/components/ReviewMoveModal";
+import ProjectLeaderboardModal from "@/components/ProjectLeaderboardModal";
 
 interface ProjectInvitationData {
   invitee: {
@@ -90,6 +92,8 @@ export default function CrewProjectsPage() {
   );
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [taskToReview, setTaskToReview] = useState<PlayerTask | null>(null);
+  const [isLeaderboardModalOpen, setIsLeaderboardModalOpen] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState([]);
 
   const handleReviewMove = async (action: "approve" | "reject") => {
     if (!taskToReview) return;
@@ -253,6 +257,24 @@ export default function CrewProjectsPage() {
     },
     [currentProjectId]
   );
+
+  const handleViewRankings = async () => {
+    if (!currentProjectId) return;
+    try {
+      const response = await api.get(
+        `/projects/${currentProjectId}/leaderboard`
+      );
+      setLeaderboardData(response.data);
+      setIsLeaderboardModalOpen(true);
+    } catch (error) {
+      console.error("Gagal mengambil leaderboard proyek:", error);
+      window.showGlobalNotification?.({
+        type: "error",
+        title: "Fetch Failed",
+        message: "Could not load project leaderboard data.",
+      });
+    }
+  };
 
   const handleDragStart = useCallback(
     (e: DragEvent<HTMLDivElement>, taskId: string) => {
@@ -519,6 +541,13 @@ export default function CrewProjectsPage() {
             >
               <FaPlus className="mr-2" /> Add Objective
             </button>
+            <button
+              onClick={handleViewRankings}
+              className="btn btn-primary text-sm flex items-center"
+              disabled={!currentProjectId}
+            >
+              <FaMedal className="mr-2" /> View Rankings
+            </button>
           </div>
         </div>
         <p className="text-sm text-gray-400 mb-6">
@@ -747,6 +776,14 @@ export default function CrewProjectsPage() {
               (c) => c.columnId === taskToReview.statusChangeRequest
             )?.title || "Unknown"
           }
+        />
+      )}
+      {isLeaderboardModalOpen && selectedProject && (
+        <ProjectLeaderboardModal
+          isOpen={isLeaderboardModalOpen}
+          onClose={() => setIsLeaderboardModalOpen(false)}
+          leaderboardData={leaderboardData}
+          projectName={selectedProject.name}
         />
       )}
     </div>
