@@ -12,7 +12,49 @@ import {
   FaEdit,
   FaTrashAlt,
   FaRocket,
+  FaCoins,
 } from "react-icons/fa";
+
+const DailyCapTracker = ({
+  value,
+  cap,
+  label,
+  icon: Icon,
+  colorClass,
+}: {
+  value: number;
+  cap: number;
+  label: string;
+  icon: React.ElementType;
+  colorClass: string;
+}) => {
+  const percentage = Math.min(100, (value / cap) * 100);
+  const isCapped = value >= cap;
+  return (
+    <div className="text-xs">
+      <div className="flex justify-between items-center mb-1 font-semibold">
+        <span className="text-gray-300 flex items-center">
+          <Icon className="mr-1.5" />
+          {label}
+        </span>
+        <span className={isCapped ? "text-red-400" : "text-gray-300"}>
+          {value}/{cap}
+        </span>
+      </div>
+      <div className="w-full h-2 bg-gray-600 rounded-full">
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${colorClass}`}
+          style={{ width: `${percentage}%` }}
+        ></div>
+      </div>
+      {isCapped && (
+        <p className="text-red-500 text-center font-bold text-xs mt-1">
+          DAILY LIMIT REACHED
+        </p>
+      )}
+    </div>
+  );
+};
 
 export default function Missions() {
   const { user, isLoading: authLoading } = useAuth();
@@ -135,6 +177,9 @@ export default function Missions() {
   console.log("All tasks from playerData:", playerData.tasks);
   console.log("Filtered personal tasks:", personalTasks);
 
+  const dailyXpCap = 20;
+  const dailyCpCap = 20;
+
   return (
     <div className="space-y-8">
       <div className="card p-5 md:p-6 bg-gray-800 border-gray-700">
@@ -148,6 +193,23 @@ export default function Missions() {
           >
             <FaPlus className="mr-2" /> Add New Log Entry
           </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-900/50 p-4 rounded-lg mb-6 border border-gray-700">
+          <DailyCapTracker
+            value={playerData.stats.dailyPersonalXpGained || 0}
+            cap={dailyXpCap}
+            label="Personal XP Gained Today"
+            icon={FaRocket}
+            colorClass="bg-purple-500"
+          />
+          <DailyCapTracker
+            value={playerData.stats.dailyPersonalCpGained || 0}
+            cap={dailyCpCap}
+            label="Personal CP Gained Today"
+            icon={FaCoins}
+            colorClass="bg-amber-500"
+          />
         </div>
 
         <div className="mb-8">

@@ -30,7 +30,7 @@ export default function ProfilePage() {
       <div className="space-y-3">
         <div>
           <p className="text-sm text-gray-500">ID Pengguna</p>
-          <p className="text-lg text-gray-700">{user.id}</p>
+          <p className="text-lg text-gray-700">{user.userId}</p>
         </div>
         <div>
           <p className="text-sm text-gray-500">Email</p>

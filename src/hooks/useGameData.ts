@@ -93,6 +93,8 @@ export interface PlayerStats {
   longestMissionStreak: number;
   lastStreakUpdateDate?: string;
   logins: number;
+  dailyPersonalXpGained?: number;
+  dailyPersonalCpGained?: number;
 }
 
 export interface PlayerActivePowerUp {
