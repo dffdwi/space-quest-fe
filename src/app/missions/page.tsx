@@ -48,14 +48,19 @@ const DailyCapTracker = ({
         ></div>
       </div>
       {isCapped && (
-        <p className="text-red-500 text-center font-bold text-xs mt-1">
-          DAILY LIMIT REACHED
-        </p>
+        <>
+          <p className="text-red-500 text-center font-bold text-xs mt-1">
+            DAILY LIMIT REACHED
+          </p>
+          <p className="text-gray-400 text-center text-xs mt-1">
+            You can still complete your tasks, but will not receive further{" "}
+            {label.includes("XP") ? "XP" : "CP"} from personal tasks today.
+          </p>
+        </>
       )}
     </div>
   );
 };
-
 export default function Missions() {
   const { user, isLoading: authLoading } = useAuth();
   const {
@@ -264,8 +269,8 @@ export default function Missions() {
                 title: taskData.title,
                 description: taskData.description,
                 dueDate: taskData.dueDate,
-                xp: taskData.xp,
-                credits: taskData.credits,
+                xp: 2,
+                credits: 2,
                 category: taskData.category,
               });
             }

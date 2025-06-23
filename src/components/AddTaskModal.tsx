@@ -29,9 +29,10 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   projectColumns = [],
   defaultDate,
 }) => {
+  const todayString = new Date().toISOString().split("T")[0];
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState(defaultDate || "");
+  const [dueDate, setDueDate] = useState(defaultDate || todayString);
   const [xp, setXp] = useState(20);
   const [credits, setCredits] = useState(5);
   const [category, setCategory] = useState("");
@@ -61,7 +62,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       } else {
         setTitle("");
         setDescription("");
-        setDueDate(defaultDate || "");
+        setDueDate(defaultDate || todayString);
         setXp(20);
         setCredits(5);
         setCategory("");
@@ -161,6 +162,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 id="taskDueDateModal"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
+                min={todayString}
                 className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
@@ -181,44 +183,45 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="taskXpModal"
-                className="block text-sm font-medium text-gray-300 mb-1"
-              >
-                XP Reward
-              </label>
-              <input
-                type="number"
-                id="taskXpModal"
-                value={xp}
-                onChange={(e) => setXp(parseInt(e.target.value, 10))}
-                min="5"
-                max="200"
-                required
-                className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
-              />
+          {projectId && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="taskXpModal"
+                  className="block text-sm font-medium text-gray-300 mb-1"
+                >
+                  XP Reward
+                </label>
+                <input
+                  type="number"
+                  id="taskXpModal"
+                  value={xp}
+                  onChange={(e) => setXp(parseInt(e.target.value, 10))}
+                  min="5"
+                  max="200"
+                  required
+                  className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="taskCreditsModal"
+                  className="block text-sm font-medium text-gray-300 mb-1"
+                >
+                  Cosmic Credits (Bonus)
+                </label>
+                <input
+                  type="number"
+                  id="taskCreditsModal"
+                  value={credits}
+                  onChange={(e) => setCredits(parseInt(e.target.value, 10))}
+                  min="0"
+                  max="100"
+                  className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
             </div>
-            <div>
-              <label
-                htmlFor="taskCreditsModal"
-                className="block text-sm font-medium text-gray-300 mb-1"
-              >
-                Cosmic Credits (Bonus)
-              </label>
-              <input
-                type="number"
-                id="taskCreditsModal"
-                value={credits}
-                onChange={(e) => setCredits(parseInt(e.target.value, 10))}
-                min="0"
-                max="100"
-                className="input-field w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-100 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-          </div>
-
+          )}
           {projectId &&
             projectMembers.length > 0 &&
             projectColumns.length > 0 && (
@@ -271,7 +274,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             <button type="button" onClick={onClose} className="btn ">
               Cancel Transmission
             </button>
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn btn-primary flex items-center">
               {existingTask ? (
                 <FaSave className="mr-2" />
               ) : (
