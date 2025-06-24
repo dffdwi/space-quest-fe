@@ -681,7 +681,7 @@ export default function CrewProjectsPage() {
                                   )}&background=random&color=fff&size=40`
                                 }
                                 alt={task.owner.name}
-                                className="w-6 h-6 rounded-full bg-gray-600 object-cover"
+                                className="w-6 h-6 rounded-full bg-gray-600 object-fill"
                               />
                               <span className="ml-2 hidden text-xs text-gray-400 sm:block">
                                 {task.owner.name}

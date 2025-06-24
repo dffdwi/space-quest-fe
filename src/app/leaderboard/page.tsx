@@ -164,9 +164,7 @@ export default function LeaderboardPage() {
                     <img
                       src={entry.avatarUrl}
                       alt={entry.name}
-                      className={`w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 ${
-                        isCurrentUser ? "border-indigo-400" : "border-gray-500"
-                      }`}
+                      className={`w-10 h-10 md:w-12 md:h-12 rounded-full object-fill `}
                     />
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">

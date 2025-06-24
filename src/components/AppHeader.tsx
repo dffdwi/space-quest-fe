@@ -122,7 +122,7 @@ const AppHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
                   : "https://img.freepik.com/free-vector/cute-astronaut-riding-rocket-waving-hand-cartoon-icon-illustration-science-technology-icon-concept_138676-2130.jpg?semt=ais_hybrid&w=740"
               }
               alt="Commander Avatar"
-              className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-indigo-500 object-cover 
+              className={`w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-indigo-500 object-fill 
              ${
                playerData.avatarFrameId === "gold-commander-frame"
                  ? "avatar-frame-active gold-commander-frame-style"

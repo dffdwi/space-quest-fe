@@ -632,6 +632,7 @@ export const useGameData = (authUser: AuthUser | null) => {
 
   const updatePlayerProfile = useCallback(
     async (newName: string, newAvatarUrl: string) => {
+      if (!playerData) return;
       try {
         const response = await api.put("/users/profile", {
           name: newName,
@@ -652,7 +653,6 @@ export const useGameData = (authUser: AuthUser | null) => {
           type: "success",
           title: "Profile Updated",
           message: "Your commander profile has been successfully updated.",
-          icon: FaUserAstronaut,
         });
       } catch (error: any) {
         console.error("Gagal update profil:", error);
@@ -663,7 +663,7 @@ export const useGameData = (authUser: AuthUser | null) => {
         });
       }
     },
-    [updatePlayerData]
+    [playerData, updatePlayerData]
   );
 
   const applyTheme = useCallback(
@@ -872,6 +872,33 @@ export const useGameData = (authUser: AuthUser | null) => {
     [playerData]
   );
 
+  const applyAvatar = useCallback(
+    async (avatarUrl: string) => {
+      if (!playerData) return;
+      try {
+        const response = await api.put("/users/profile", {
+          name: playerData.name,
+          avatarUrl: avatarUrl,
+        });
+        const updatedUser = response.data;
+
+        updatePlayerData((prev) => {
+          if (!prev) return {};
+          return { ...prev, avatarUrl: updatedUser.avatarUrl };
+        });
+
+        window.showGlobalNotification?.({
+          type: "success",
+          title: "Avatar Updated",
+          message: "Your commander avatar has been changed.",
+        });
+      } catch (error) {
+        console.error("Gagal menerapkan avatar:", error);
+      }
+    },
+    [playerData, updatePlayerData]
+  );
+
   return {
     playerData,
     isLoadingData,
@@ -891,5 +918,6 @@ export const useGameData = (authUser: AuthUser | null) => {
     ALL_BADGES_CONFIG: allBadges,
     claimDailyDiscovery,
     claimProjectTaskReward,
+    applyAvatar,
   };
 };

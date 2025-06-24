@@ -26,6 +26,7 @@ export default function ShipSettingsPage() {
     applyAvatarFrame,
     resetGameData,
     SHOP_ITEMS_CONFIG,
+    applyAvatar,
   } = useGameData(user);
   const router = useRouter();
 
@@ -161,7 +162,7 @@ export default function ShipSettingsPage() {
                 required
               />
             </div>
-            <div>
+            {/* <div>
               <label
                 htmlFor="avatarUrl"
                 className="block text-sm font-medium text-gray-300 mb-1"
@@ -176,7 +177,7 @@ export default function ShipSettingsPage() {
                 className="input-field mt-1 block w-full"
                 required
               />
-            </div>
+            </div> */}
             <button type="submit" className="btn btn-primary flex items-center">
               <FaSave className="mr-2" /> Update Profile
             </button>
@@ -244,6 +245,52 @@ export default function ShipSettingsPage() {
               <FaSave className="mr-2" /> Change Password
             </button>
           </form>
+        </section>
+
+        <section>
+          <h2 className="text-xl font-semibold text-indigo-300 mb-4 border-b border-gray-700 pb-2">
+            Commander Avatar Collection
+          </h2>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+            {/* Tampilkan Avatar Default */}
+            <div
+              onClick={() => applyAvatar("/images/char-1.svg")}
+              className={`p-2 rounded-lg cursor-pointer border-2 ${
+                playerData.avatarUrl === "/images/char-1.svg"
+                  ? "border-green-500 ring-2 ring-green-500/50"
+                  : "border-gray-600 hover:border-indigo-500"
+              }`}
+            >
+              <img
+                src="/images/char-1.svg"
+                alt="Avatar: The Default"
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* Tampilkan Avatar yang Sudah Dibeli */}
+            {SHOP_ITEMS_CONFIG.filter(
+              (item) =>
+                item.type === "cosmetic" &&
+                playerData.purchasedShopItemIds.includes(item.itemId)
+            ).map((item) => (
+              <div
+                key={item.itemId}
+                onClick={() => applyAvatar(item.value)}
+                className={`p-2 rounded-lg cursor-pointer border-2 ${
+                  playerData.avatarUrl === item.value
+                    ? "border-green-500 ring-2 ring-green-500/50"
+                    : "border-gray-600 hover:border-indigo-500"
+                }`}
+              >
+                <img
+                  src={item.value}
+                  alt={item.name}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="mb-10">

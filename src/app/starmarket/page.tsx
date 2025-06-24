@@ -9,8 +9,13 @@ import { FaStore, FaCoins, FaCheck, FaRocket, FaGift } from "react-icons/fa";
 
 export default function StarMarketPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { playerData, isLoadingData, purchaseShopItem, SHOP_ITEMS_CONFIG } =
-    useGameData(user);
+  const {
+    playerData,
+    isLoadingData,
+    purchaseShopItem,
+    SHOP_ITEMS_CONFIG,
+    applyAvatar,
+  } = useGameData(user);
   const router = useRouter();
 
   useEffect(() => {
@@ -40,7 +45,11 @@ export default function StarMarketPage() {
   )?.itemId;
 
   const handlePurchase = (item: ShopItem) => {
-    purchaseShopItem(item.itemId);
+    if (item.type === "cosmetic" && purchasedIds.has(item.itemId)) {
+      applyAvatar(item.value);
+    } else {
+      purchaseShopItem(item.itemId);
+    }
   };
 
   return (
@@ -63,7 +72,12 @@ export default function StarMarketPage() {
 
         {SHOP_ITEMS_CONFIG.length > 0 ? (
           (
-            ["Ship Customization", "Commander Gear", "Consumables"] as const
+            [
+              "Avatars",
+              "Ship Customization",
+              "Commander Gear",
+              "Consumables",
+            ] as const
           ).map((category) => {
             const itemsInCategory = SHOP_ITEMS_CONFIG.filter(
               (item) => item.category === category
@@ -111,13 +125,13 @@ export default function StarMarketPage() {
                       ) {
                         buttonText = "Already Owned";
                         buttonClasses =
-                          "btn-secondary opacity-60 cursor-not-allowed";
+                          "bg-gray-700 opacity-60 cursor-not-allowed";
                         buttonDisabled = true;
                         actionIcon = <FaCheck className="mr-2" />;
                       } else {
                         buttonText = "Already Owned";
                         buttonClasses =
-                          "btn-secondary opacity-60 cursor-not-allowed";
+                          "bg-gray-700 opacity-60 cursor-not-allowed";
                         buttonDisabled = true;
                         actionIcon = <FaCheck className="mr-2" />;
                       }
@@ -148,16 +162,24 @@ export default function StarMarketPage() {
                       >
                         <div>
                           <div className="w-full h-36 bg-gray-800 rounded-md flex items-center justify-center mb-4 overflow-hidden">
-                            <IconFactory
-                              iconName={item.icon}
-                              className={`text-6xl ${
-                                isActive
-                                  ? "text-green-400"
-                                  : isPurchased
-                                  ? "text-amber-400"
-                                  : "text-indigo-400"
-                              }`}
-                            />
+                            {item.icon && item.icon.startsWith("/") ? (
+                              <img
+                                src={item.icon}
+                                alt={item.name}
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <IconFactory
+                                iconName={item.icon}
+                                className={`text-6xl ${
+                                  isActive
+                                    ? "text-green-400"
+                                    : isPurchased
+                                    ? "text-amber-400"
+                                    : "text-indigo-400"
+                                }`}
+                              />
+                            )}
                           </div>
                           <h3
                             className="font-semibold text-lg text-gray-100 mb-1 truncate"
