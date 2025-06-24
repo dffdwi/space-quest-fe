@@ -34,6 +34,69 @@ interface LeaderboardEntry {
   }[];
 }
 
+const PodiumItem = ({
+  entry,
+  rank,
+}: {
+  entry: LeaderboardEntry;
+  rank: number;
+}) => {
+  const rankStyles = [
+    {
+      size: "w-24 h-24 md:w-28 md:h-28",
+      iconColor: "text-amber-400",
+      icon: FaCrown,
+      delay: "animation-delay-0",
+    },
+    {
+      size: "w-20 h-20 md:w-24 md:h-24",
+      iconColor: "text-slate-300",
+      icon: FaMedal,
+      delay: "animation-delay-200",
+    },
+    {
+      size: "w-16 h-16 md:w-20 md:h-20",
+      iconColor: "text-yellow-600",
+      icon: FaMedal,
+      delay: "animation-delay-400",
+    },
+  ];
+
+  const style = rankStyles[rank - 1];
+  const Icon = style.icon;
+
+  return (
+    <div
+      className={`text-center flex flex-col items-center ${
+        rank === 1 ? "mt-0" : "mt-6"
+      }`}
+    >
+      <div className="relative mb-2">
+        <Icon
+          className={`absolute -top-2 -right-2 text-2xl ${style.iconColor} transform rotate-12`}
+        />
+
+        <img
+          src={
+            entry.avatarUrl ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+              entry.name || "S"
+            )}`
+          }
+          alt={entry.name}
+          className={`${style.size} object-fill shadow-lg animate-gentle-bounce ${style.delay}`}
+        />
+      </div>
+      <p className="font-bold text-lg text-gray-100 truncate max-w-[150px]">
+        {entry.name}
+      </p>
+      <p className={`font-semibold ${style.iconColor}`}>
+        {entry.xp.toLocaleString()} XP
+      </p>
+    </div>
+  );
+};
+
 export default function LeaderboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { playerData, isLoadingData } = useGameData(user);
@@ -97,6 +160,16 @@ export default function LeaderboardPage() {
 
     return leaderboardData;
   }, [playerData, leaderboardData, ALL_BADGES_CONFIG]);
+
+  const topThree = useMemo(
+    () => leaderboardData.slice(0, 3),
+    [leaderboardData]
+  );
+  const restOfLeaderboard = useMemo(
+    () => leaderboardData.slice(3),
+    [leaderboardData]
+  );
+
   if (authLoading || isLoadingData || isLeaderboardLoading || !playerData) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -124,6 +197,14 @@ export default function LeaderboardPage() {
           The most renowned commanders and explorers across the SpaceQuest
           galaxy. Ascend the ranks and etch your name among legends!
         </p>
+
+        {topThree.length >= 3 && (
+          <section className="flex justify-center items-end gap-4 md:gap-8 p-6 mb-8 border-b-2 border-indigo-700/50 pb-8">
+            <PodiumItem entry={topThree[1]} rank={2} />
+            <PodiumItem entry={topThree[0]} rank={1} />
+            <PodiumItem entry={topThree[2]} rank={3} />
+          </section>
+        )}
 
         {leaderboardEntries.length > 0 ? (
           <div className="space-y-3">

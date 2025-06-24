@@ -102,7 +102,7 @@ const AppHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
       <div className="flex px-6 flex-col sm:flex-row justify-between items-center">
         <button
           onClick={onMenuClick}
-          className="md:hidden text-2xl mr-4 text-gray-300 hover:text-white"
+          className="md:hidden text-2xl mr-4 text-gray-300 hover:text-white flex items-start"
         >
           <FaBars />
         </button>
