@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FaCoins, FaFire, FaFlask } from "react-icons/fa";
+import { FaBars, FaCoins, FaFire, FaFlask } from "react-icons/fa";
 import { useGameData, XP_PER_LEVEL } from "@/hooks/useGameData";
 
 const pageConfigs: {
@@ -40,7 +40,7 @@ const pageConfigs: {
   },
 };
 
-const AppHeader = () => {
+const AppHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { playerData, isLoadingData, getXpBoundaries } = useGameData(user);
@@ -100,7 +100,13 @@ const AppHeader = () => {
   return (
     <header className="sticky top-0 bg-gray-800 pt-6 pb-4 z-50 -mx-6 md:-mx-8 px-6 md:px-8 border-b border-gray-700">
       <div className="flex px-6 flex-col sm:flex-row justify-between items-center">
-        <div>
+        <button
+          onClick={onMenuClick}
+          className="md:hidden text-2xl mr-4 text-gray-300 hover:text-white"
+        >
+          <FaBars />
+        </button>
+        <div className="flex-grow">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-100">
             {pageConfig.title}
           </h1>

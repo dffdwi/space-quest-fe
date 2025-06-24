@@ -22,9 +22,11 @@ declare global {
 
 interface AppBodyProps {
   children: ReactNode;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (isOpen: boolean) => void;
 }
 
-function AppBody({ children }: AppBodyProps) {
+function AppBody({ children, isSidebarOpen, setIsSidebarOpen }: AppBodyProps) {
   const { user } = useAuth();
   const { playerData, isLoadingData: isGameDataLoading } = useGameData(user);
   const pathname = usePathname();
@@ -48,9 +50,9 @@ function AppBody({ children }: AppBodyProps) {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <main className="flex-1 overflow-y-auto no-scrollbar">
-        <AppHeader />
+        <AppHeader onMenuClick={() => setIsSidebarOpen(true)} />
         <div className="p-6 md:p-8">{children}</div>
       </main>
     </div>
@@ -65,6 +67,7 @@ export default function RootLayout({
   const [notification, setNotification] = useState<NotificationMessage | null>(
     null
   );
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     window.showGlobalNotification = (
@@ -98,7 +101,12 @@ export default function RootLayout({
         className={`${inter.className} theme-dark bg-gray-900 text-gray-100`}
       >
         <AuthProvider>
-          <AppBody>{children}</AppBody>
+          <AppBody
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
+          >
+            {children}
+          </AppBody>
           <GlobalNotification
             notification={notification}
             onDismiss={handleDismissNotification}
