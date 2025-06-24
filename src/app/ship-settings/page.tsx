@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useGameData } from "@/hooks/useGameData";
+import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, FormEvent } from "react";
 import {
@@ -12,6 +13,7 @@ import {
   FaStar,
   FaRedo,
   FaRocket,
+  FaShieldAlt,
 } from "react-icons/fa";
 
 export default function ShipSettingsPage() {
@@ -31,6 +33,9 @@ export default function ShipSettingsPage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("");
   const [selectedFrame, setSelectedFrame] = useState<string | null>("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -53,6 +58,41 @@ export default function ShipSettingsPage() {
     const themeValue = e.target.value;
     setSelectedTheme(themeValue);
     applyTheme(themeValue);
+  };
+
+  const handleChangePasswordSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      window.showGlobalNotification?.({
+        type: "error",
+        title: "Error",
+        message: "New password and confirmation do not match.",
+      });
+      return;
+    }
+    try {
+      await api.put("/users/profile/change-password", {
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+
+      window.showGlobalNotification?.({
+        type: "success",
+        title: "Success",
+        message: "Password changed successfully.",
+      });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error("Failed to change password:", error);
+      window.showGlobalNotification?.({
+        type: "error",
+        title: "Password Change Failed",
+        message: error.response?.data?.message || "An error occurred.",
+      });
+    }
   };
 
   const handleFrameChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -139,6 +179,69 @@ export default function ShipSettingsPage() {
             </div>
             <button type="submit" className="btn btn-primary flex items-center">
               <FaSave className="mr-2" /> Update Profile
+            </button>
+          </form>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-xl font-semibold text-indigo-300 mb-4 border-b border-gray-700 pb-2">
+            <FaShieldAlt className="inline mr-2" />
+            Security & Password
+          </h2>
+          <form
+            onSubmit={handleChangePasswordSubmit}
+            className="space-y-5 max-w-md"
+          >
+            <div>
+              <label
+                htmlFor="currentPassword"
+                className="block text-sm font-medium text-gray-300 mb-1"
+              >
+                Current Password
+              </label>
+              <input
+                type="password"
+                id="currentPassword"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="input-field mt-1 block w-full"
+                required
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="newPassword"
+                className="block text-sm font-medium text-gray-300 mb-1"
+              >
+                New Password
+              </label>
+              <input
+                type="password"
+                id="newPassword"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="input-field mt-1 block w-full"
+                required
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-300 mb-1"
+              >
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="input-field mt-1 block w-full"
+                required
+              />
+            </div>
+            <button type="submit" className="btn btn-primary flex items-center">
+              <FaSave className="mr-2" /> Change Password
             </button>
           </form>
         </section>
