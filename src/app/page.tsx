@@ -336,12 +336,12 @@ export default function DashboardPage() {
         </h2>
         {playerData.stats ? (
           <div>
-            <p className="text-sm text-gray-300 mb-1">
+            {/* <p className="text-sm text-gray-300 mb-1">
               Objectives Cleared (Total):{" "}
               <span className="font-bold text-indigo-400">
                 {playerData.stats.tasksCompleted}
               </span>
-            </p>
+            </p> */}
             <div className="mt-4 h-64 md:h-72">
               <StatsChart tasks={playerData.tasks} />
             </div>

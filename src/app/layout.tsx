@@ -11,6 +11,7 @@ import GlobalNotification, {
 } from "@/components/GlobalNotification";
 import { useState, useEffect, ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import VideoBackground from "@/components/VideoBackground";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -33,7 +34,7 @@ function AppBody({ children, isSidebarOpen, setIsSidebarOpen }: AppBodyProps) {
 
   useEffect(() => {
     if (!isGameDataLoading && playerData) {
-      const themeToApply = playerData.activeTheme || "theme-dark";
+      const themeToApply = "theme-dark";
       const body = document.body;
 
       body.className = body.className.replace(/theme-\S+/g, "");
@@ -44,17 +45,41 @@ function AppBody({ children, isSidebarOpen, setIsSidebarOpen }: AppBodyProps) {
 
   const isAuthPage = pathname === "/login" || pathname === "/register";
 
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   if (isAuthPage) {
     return <>{children}</>;
   }
 
+  const activeTheme =
+    hasMounted && playerData ? playerData.activeTheme : "theme-dark";
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      <main className="flex-1 overflow-y-auto no-scrollbar">
-        <AppHeader onMenuClick={() => setIsSidebarOpen(true)} />
-        <div className="p-6 md:p-8">{children}</div>
-      </main>
+    <div key={activeTheme} className={activeTheme}>
+      {!isAuthPage && playerData && (
+        <VideoBackground activeTheme={playerData.activeTheme} />
+      )}
+
+      {isAuthPage ? (
+        children
+      ) : (
+        <div className="flex h-screen overflow-hidden">
+          <Sidebar
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+          />
+          <main className="flex-1 overflow-y-auto no-scrollbar bg-transparent">
+            {" "}
+            {/* Buat main transparan */}
+            <AppHeader onMenuClick={() => setIsSidebarOpen(true)} />
+            <div className="p-6 md:p-8">{children}</div>
+          </main>
+        </div>
+      )}
     </div>
   );
 }
@@ -95,11 +120,9 @@ export default function RootLayout({
           name="description"
           content="Embark on epic productivity missions!"
         />
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/logo.svg" />
       </head>
-      <body
-        className={`${inter.className} theme-dark bg-gray-900 text-gray-100`}
-      >
+      <body className={`${inter.className}`}>
         <AuthProvider>
           <AppBody
             isSidebarOpen={isSidebarOpen}
