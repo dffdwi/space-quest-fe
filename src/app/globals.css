@@ -76,7 +76,7 @@ body {
   color: #6366f1;
 }
 .sidebar-link:not(.active):hover {
-  background-color: #f3f4f6;
+  background-color: #6366f1;
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;

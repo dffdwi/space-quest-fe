@@ -332,7 +332,7 @@ export default function DashboardPage() {
 
       <section className="card p-5">
         <h2 className="text-xl font-semibold text-gray-100 mb-4">
-          Galactic Performance Metrics
+          Performance Metrics
         </h2>
         {playerData.stats ? (
           <div>
