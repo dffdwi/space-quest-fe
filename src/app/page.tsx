@@ -110,12 +110,12 @@ export default function DashboardPage() {
             <FaRocket className="inline-block mr-3 text-purple-400" />
             Today's Flight Plan
           </h2>
-          <button
+          {/* <button
             onClick={() => setIsTaskModalOpen(true)}
             className="btn btn-primary text-xs sm:text-sm flex items-center"
           >
             <FaPlus className="mr-1 sm:mr-2" /> Add Personal Log
-          </button>
+          </button> */}
         </div>
 
         {/* Bagian Personal */}
