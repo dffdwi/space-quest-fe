@@ -2,7 +2,7 @@
 
 import IconFactory from "@/components/IconFactory";
 import { useAuth } from "@/contexts/AuthContext";
-import { useGameData, ShopItem } from "@/hooks/useGameData";
+import { useGameData, ShopItem, PlayerActivePowerUp } from "@/hooks/useGameData";
 import { useRouter } from "next/navigation";
 import { JSX, useEffect } from "react";
 import { FaStore, FaCoins, FaCheck, FaRocket, FaGift } from "react-icons/fa";
@@ -15,7 +15,7 @@ export default function StarMarketPage() {
     purchaseShopItem,
     SHOP_ITEMS_CONFIG,
     applyAvatar,
-  } = useGameData(user);
+  } = useGameData();
   const router = useRouter();
 
   useEffect(() => {
@@ -37,10 +37,10 @@ export default function StarMarketPage() {
 
   const purchasedIds = new Set(playerData.purchasedShopItemIds);
   const activeThemeId = SHOP_ITEMS_CONFIG.find(
-    (item) => item.type === "theme" && item.value === playerData.activeTheme
+    (item: ShopItem) => item.type === "theme" && item.value === playerData.activeTheme
   )?.itemId;
   const activeFrameId = SHOP_ITEMS_CONFIG.find(
-    (item) =>
+    (item: ShopItem) =>
       item.type === "avatar_frame" && item.value === playerData.avatarFrameId
   )?.itemId;
 
@@ -80,7 +80,7 @@ export default function StarMarketPage() {
             ] as const
           ).map((category) => {
             const itemsInCategory = SHOP_ITEMS_CONFIG.filter(
-              (item) => item.category === category
+              (item: ShopItem) => item.category === category
             );
             if (itemsInCategory.length === 0) return null;
 
@@ -90,7 +90,7 @@ export default function StarMarketPage() {
                   {category}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6">
-                  {itemsInCategory.map((item) => {
+                  {itemsInCategory.map((item: ShopItem) => {
                     const isPurchased =
                       item.type !== "power_up" && purchasedIds.has(item.itemId);
                     const isActive =
@@ -101,7 +101,7 @@ export default function StarMarketPage() {
                     const isPowerUpActive =
                       item.type === "power_up" &&
                       playerData.activePowerUps?.find(
-                        (p) => p.item.value === item.value
+                        (p: PlayerActivePowerUp) => p.item.value === item.value
                       );
                     const canAfford = playerData.credits >= item.price;
                     const ItemIcon = item.icon || FaGift;

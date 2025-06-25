@@ -28,8 +28,7 @@ interface AppBodyProps {
 }
 
 function AppBody({ children, isSidebarOpen, setIsSidebarOpen }: AppBodyProps) {
-  const { user } = useAuth();
-  const { playerData, isLoadingData: isGameDataLoading } = useGameData(user);
+  const { playerData, isGameDataLoading } = useAuth();
   const pathname = usePathname();
 
   useEffect(() => {

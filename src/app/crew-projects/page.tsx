@@ -65,15 +65,18 @@ export interface CrewProject {
 }
 
 export default function CrewProjectsPage() {
-  const { user, isLoading: authLoading } = useAuth();
+const {
+  user,
+  isLoading: authLoading,
+  playerData,
+  isGameDataLoading: isLoadingData,
+} = useAuth();
   const {
-    playerData,
-    isLoadingData,
     addTask,
     editTask,
     completeTask,
     claimProjectTaskReward,
-  } = useGameData(user);
+  } = useGameData();
   const router = useRouter();
 
   const [projects, setProjects] = useState<CrewProject[]>([]);

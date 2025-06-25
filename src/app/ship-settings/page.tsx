@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useGameData } from "@/hooks/useGameData";
+import { ShopItem, useGameData } from "@/hooks/useGameData";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, FormEvent } from "react";
@@ -17,17 +17,20 @@ import {
 } from "react-icons/fa";
 
 export default function ShipSettingsPage() {
-  const { user, isLoading: authLoading } = useAuth();
   const {
+    user,
+    isLoading: authLoading,
     playerData,
-    isLoadingData,
+    isGameDataLoading: isLoadingData,
+  } = useAuth();
+  const {
     updatePlayerProfile,
     applyTheme,
     applyAvatarFrame,
     resetGameData,
     SHOP_ITEMS_CONFIG,
     applyAvatar,
-  } = useGameData(user);
+  } = useGameData();
   const router = useRouter();
 
   const [commanderName, setCommanderName] = useState("");
@@ -124,10 +127,10 @@ export default function ShipSettingsPage() {
   }
 
   const availableThemes = SHOP_ITEMS_CONFIG.filter(
-    (item) => item.type === "theme"
+    (item: ShopItem) => item.type === "theme"
   );
   const availableFrames = SHOP_ITEMS_CONFIG.filter(
-    (item) => item.type === "avatar_frame"
+    (item: ShopItem) => item.type === "avatar_frame"
   );
 
   return (
@@ -270,10 +273,10 @@ export default function ShipSettingsPage() {
 
             {/* Tampilkan Avatar yang Sudah Dibeli */}
             {SHOP_ITEMS_CONFIG.filter(
-              (item) =>
+              (item: ShopItem) =>
                 item.type === "cosmetic" &&
                 playerData.purchasedShopItemIds.includes(item.itemId)
-            ).map((item) => (
+            ).map((item: ShopItem) => (
               <div
                 key={item.itemId}
                 onClick={() => applyAvatar(item.value)}
@@ -313,7 +316,7 @@ export default function ShipSettingsPage() {
                 className="input-field mt-1 block w-full sm:w-auto"
               >
                 <option value="theme-dark">Default Dark (Starlight)</option>
-                {availableThemes.map((theme) => (
+                {availableThemes.map((theme: ShopItem) => (
                   <option
                     key={theme.itemId}
                     value={theme.value}
@@ -345,7 +348,7 @@ export default function ShipSettingsPage() {
                 className="input-field mt-1 block w-full sm:w-auto"
               >
                 <option value="null">No Frame (Standard Issue)</option>
-                {availableFrames.map((frame) => (
+                {availableFrames.map((frame: ShopItem) => (
                   <option
                     key={frame.itemId}
                     value={frame.value}

@@ -12,8 +12,13 @@ import { FaMapMarkedAlt, FaRocket } from "react-icons/fa";
 import AddTaskModal from "@/components/AddTaskModal";
 
 export default function StarMapPage() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { playerData, isLoadingData, addTask, editTask } = useGameData(user);
+const {
+  user,
+  isLoading: authLoading,
+  playerData,
+  isGameDataLoading: isLoadingData,
+} = useAuth();
+  const { addTask, editTask } = useGameData();
   const router = useRouter();
 
   const [isModalOpen, setIsModalOpen] = useState(false);

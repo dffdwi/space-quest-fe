@@ -98,8 +98,12 @@ const PodiumItem = ({
 };
 
 export default function LeaderboardPage() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { playerData, isLoadingData } = useGameData(user);
+  const {
+    user,
+    isLoading: authLoading,
+    playerData,
+    isGameDataLoading: isLoadingData,
+  } = useAuth();
   const router = useRouter();
 
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>(

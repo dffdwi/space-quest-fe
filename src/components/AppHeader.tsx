@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FaBars, FaCoins, FaFire, FaFlask } from "react-icons/fa";
-import { useGameData, XP_PER_LEVEL } from "@/hooks/useGameData";
+import { PlayerActivePowerUp, useGameData, XP_PER_LEVEL } from "@/hooks/useGameData";
 
 const pageConfigs: {
   [key: string]: { title: string; subtitle: (name?: string) => string };
@@ -43,7 +43,7 @@ const pageConfigs: {
 const AppHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const { playerData, isLoadingData, getXpBoundaries } = useGameData(user);
+  const { playerData, isLoadingData, getXpBoundaries } = useGameData();
 
   const pageConfig = pageConfigs[pathname] || {
     title: "SpaceQuest",
@@ -176,7 +176,7 @@ const AppHeader = ({ onMenuClick }: { onMenuClick: () => void }) => {
               </div>
             </div>
             {playerData.activePowerUps &&
-              playerData.activePowerUps.find((p) =>
+              playerData.activePowerUps.find((p: PlayerActivePowerUp) =>
                 p.item.value.includes("xp_boost")
               ) && (
                 <div

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { User as AuthUser } from "@/contexts/AuthContext";
+import { User as AuthUser, useAuth } from "@/contexts/AuthContext";
 import {
   FaCheckCircle,
   FaEdit,
@@ -250,268 +250,87 @@ export let SHOP_ITEMS_CONFIG: ShopItem[] = [
   },
 ];
 
-export const useGameData = (authUser: AuthUser | null) => {
-  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
-  const [isLoadingData, setIsLoadingData] = useState(true);
-
-  const [shopItems, setShopItems] = useState<ShopItem[]>([]);
-  const [allBadges, setAllBadges] = useState<PlayerBadge[]>([]);
-
-  const fetchGameData = useCallback(async () => {
-    if (!authUser) return;
-
-    setIsLoadingData(true);
-    try {
-      const [profileRes, tasksRes, missionsRes, gameConfigRes] =
-        await Promise.all([
-          api.get("/auth/profile"),
-          api.get("/tasks"),
-          api.get("/missions/my-progress"),
-          api.get("/game-config/all"),
-        ]);
-
-      const profile = profileRes.data;
-      const tasks = tasksRes.data;
-      const playerMissions = missionsRes.data;
-      const gameConfig = gameConfigRes.data;
-
-      const todayStr = new Date().toISOString().split("T")[0];
-      const lastLoginStr = profile.lastLoginDate
-        ? new Date(profile.lastLoginDate).toISOString().split("T")[0]
-        : null;
-
-      const combinedData: PlayerData = {
-        id: profile.userId,
-        name: profile.name,
-        avatarUrl: profile.avatarUrl,
-        level: profile.level,
-        xp: profile.xp,
-        credits: profile.credits,
-        activeTheme: profile.activeTheme,
-        avatarFrameId: profile.activeAvatarFrameId,
-        tasks: tasks,
-        missions: playerMissions,
-        earnedBadgeIds: (profile.badges || []).map(
-          (b: { badgeId: string }) => b.badgeId
-        ),
-        purchasedShopItemIds: (profile.inventory || []).map(
-          (i: { itemId: string }) => i.itemId
-        ),
-        activePowerUps: profile.activePowerUps,
-        dailyLogin: {
-          lastLoginDate: profile.lastLoginDate,
-          streak: profile.loginStreak,
-          bonusClaimedToday: todayStr === lastLoginStr,
-        },
-        dailyDiscovery: {
-          lastClaimedDate: profile.lastDiscoveryDate,
-          available:
-            todayStr !==
-            (profile.lastDiscoveryDate
-              ? new Date(profile.lastDiscoveryDate).toISOString().split("T")[0]
-              : null),
-        },
-        stats: profile.stats,
-        pendingInvitationCount: profile.pendingInvitationCount || 0,
-      };
-
-      setShopItems(gameConfig.shopItems);
-      setAllBadges(gameConfig.badges);
-
-      setPlayerData(combinedData);
-      console.log(combinedData);
-      if (!combinedData.dailyLogin.bonusClaimedToday) {
-        api
-          .post("/daily/check-in")
-          .then((response) => {
-            fetchGameData();
-          })
-          .catch((err) => {
-            if (err.response?.status !== 400) console.error(err);
-          });
-      }
-    } catch (error) {
-      console.error("Gagal mengambil data game dari server:", error);
-    } finally {
-      setIsLoadingData(false);
-    }
-  }, [authUser]);
-
-  useEffect(() => {
-    if (authUser) {
-      fetchGameData();
-    } else {
-      setPlayerData(null);
-      setIsLoadingData(false);
-    }
-  }, [authUser, fetchGameData]);
-
-  const updatePlayerData = useCallback(
-    (
-      newChanges:
-        | Partial<PlayerData>
-        | ((prevState: PlayerData) => Partial<PlayerData>)
-    ) => {
-      setPlayerData((currentPlayerData) => {
-        if (typeof newChanges === "function") {
-          if (currentPlayerData === null) {
-            return null;
-          }
-          const changesToApply = newChanges(currentPlayerData);
-          return { ...currentPlayerData, ...changesToApply };
-        } else {
-          if (currentPlayerData === null) {
-            return null;
-          }
-          return { ...currentPlayerData, ...newChanges };
-        }
-      });
-    },
-    []
-  );
+export const useGameData = () => {
+  const {
+    user,
+    playerData,
+    isGameDataLoading,
+    refetchGameData,
+    shopItems,
+    allBadges,
+  } = useAuth();
 
   const addTask = useCallback(
     async (
-      newTaskData: Omit<
-        PlayerTask,
-        "taskId" | "completed" | "completedAt" | "status"
-      >
+      newTaskData: Omit<PlayerTask, "taskId" | "completed" | "completedAt">
     ) => {
-      if (!playerData) return;
-
       try {
         const response = await api.post("/tasks", newTaskData);
-        const createdTask = response.data;
-
-        updatePlayerData((prev) => {
-          if (!prev) return {};
-          return {
-            tasks: [createdTask, ...prev.tasks],
-          };
-        });
-
+        await refetchGameData(); // Panggil refetch untuk sinkronisasi
         window.showGlobalNotification?.({
           type: "info",
           title: "Mission Log Added!",
-          message: `"${createdTask.title}" has been recorded.`,
+          message: `"${response.data.title}" has been recorded.`,
           icon: FaFileMedicalAlt,
         });
-
-        return createdTask;
-      } catch (error) {
+      } catch (error: any) {
         console.error("Gagal membuat tugas baru:", error);
         window.showGlobalNotification?.({
           type: "error",
           title: "Creation Failed",
-          message: "Failed to record new mission log on the server.",
+          message:
+            error.response?.data?.message ||
+            "Failed to record new mission log.",
         });
       }
     },
-    [playerData, updatePlayerData]
+    [refetchGameData]
   );
 
   const editTask = useCallback(
     async (taskId: string, updates: Partial<PlayerTask>) => {
-      if (!playerData) return;
-
       try {
         const response = await api.put(`/tasks/${taskId}`, updates);
-        const updatedTask = response.data;
-
-        updatePlayerData((prev) => {
-          if (!prev) return {};
-          return {
-            tasks: prev.tasks.map((task) =>
-              task.taskId === taskId ? updatedTask : task
-            ),
-          };
-        });
-
+        await refetchGameData();
         window.showGlobalNotification?.({
           type: "info",
           title: "Mission Log Updated!",
-          message: `Log entry "${updatedTask.title}" modified.`,
+          message: `Changes to "${response.data.title}" have been saved.`,
           icon: FaEdit,
         });
-
-        return updatedTask;
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Gagal memperbarui tugas ${taskId}:`, error);
         window.showGlobalNotification?.({
           type: "error",
           title: "Update Failed",
-          message: "Failed to save changes to the server.",
+          message: error.response?.data?.message || "Could not save changes.",
         });
       }
     },
-    [playerData, updatePlayerData]
+    [refetchGameData]
   );
 
   const completeTask = useCallback(
     async (taskId: string) => {
-      if (!playerData) return;
-
       try {
         const response = await api.post(`/tasks/${taskId}/complete`);
-        const { task: updatedTask, eventResult } = response.data;
+        const { eventResult } = response.data;
+        await refetchGameData();
 
-        updatePlayerData((prev) => {
-          if (!prev) return {};
-
-          const newState = { ...prev };
-
-          newState.tasks = prev.tasks.map((t) =>
-            t.taskId === taskId ? updatedTask : t
-          );
-
-          const user = prev;
-          user.xp += updatedTask.xp;
-          user.credits += updatedTask.credits;
-          if (eventResult.leveledUp) {
-            user.level = eventResult.leveledUp.to;
-          }
-
-          if (
-            eventResult.missionsReadyToClaim &&
-            eventResult.missionsReadyToClaim.length > 0
-          ) {
-            const readyMissionIds = new Set(
-              eventResult.missionsReadyToClaim.map((m: any) => m.missionId)
-            );
-            newState.missions = prev.missions.map((pm) => {
-              if (readyMissionIds.has(pm.missionId)) {
-              }
-              return pm;
-            });
-          }
-
-          return newState;
-        });
-
-        window.showGlobalNotification?.({
-          type: "success",
-          title: "Objective Cleared!",
-          message: `+${updatedTask.xp} XP & +${updatedTask.credits} CP for "${updatedTask.title}".`,
-          icon: FaCheckCircle,
-        });
-
-        if (eventResult.leveledUp) {
+        // Tampilkan notifikasi berdasarkan hasil dari backend
+        if (eventResult?.powerUpConsumed) {
+          window.showGlobalNotification?.({
+            type: "quest",
+            title: "Power-up Consumed!",
+            message: `XP Boost was used.`,
+          });
+        }
+        if (eventResult?.leveledUp) {
           window.showGlobalNotification?.({
             type: "quest",
             title: "Promotion!",
             message: `Reached Command Level ${eventResult.leveledUp.to}!`,
             icon: FaUserShield,
-          });
-        }
-
-        if (eventResult.badgesEarned && eventResult.badgesEarned.length > 0) {
-          eventResult.badgesEarned.forEach((badge: any) => {
-            window.showGlobalNotification?.({
-              type: "success",
-              title: "Commendation Earned!",
-              message: `New insignia: ${badge.name}`,
-              icon: FaAward,
-            });
           });
         }
       } catch (error: any) {
@@ -521,11 +340,11 @@ export const useGameData = (authUser: AuthUser | null) => {
           title: "Action Failed",
           message:
             error.response?.data?.message ||
-            "Failed to complete the objective on the server.",
+            "Could not complete the objective.",
         });
       }
     },
-    [playerData, updatePlayerData]
+    [refetchGameData]
   );
 
   const getXpBoundaries = useCallback(() => {
@@ -559,21 +378,12 @@ export const useGameData = (authUser: AuthUser | null) => {
   }, [playerData]);
 
   const handleDailyLogin = useCallback(async () => {
-    if (!playerData) return;
-
     try {
       const response = await api.post("/daily/check-in");
       const { bonusXp, bonusCredits, user: updatedUser } = response.data;
 
-      updatePlayerData((prev) => ({
-        ...prev,
-        ...updatedUser,
-        dailyLogin: {
-          lastLoginDate: updatedUser.lastLoginDate,
-          streak: updatedUser.loginStreak,
-          bonusClaimedToday: true,
-        },
-      }));
+      // Panggil refetch untuk mendapatkan semua data terbaru setelah check-in
+      await refetchGameData();
 
       window.showGlobalNotification?.({
         type: "success",
@@ -586,76 +396,47 @@ export const useGameData = (authUser: AuthUser | null) => {
         console.error("Gagal melakukan check-in harian:", error);
       }
     }
-  }, [playerData, updatePlayerData]);
+  }, [refetchGameData]);
 
   const purchaseShopItem = useCallback(
     async (itemId: string) => {
-      if (!playerData) return;
-
-      const item = shopItems.find((i) => i.itemId === itemId);
-      if (!item) {
-        console.error("Item tidak ditemukan di konfigurasi.");
-        return;
-      }
-
-      if (playerData.credits < item.price) {
-        window.showGlobalNotification?.({
-          type: "error",
-          title: "Insufficient Credits!",
-          message: `Not enough Cosmic Points for ${item.name}.`,
-        });
-        return;
-      }
-
       try {
         await api.post("/shop/purchase", { itemId });
-        await fetchGameData();
-
+        await refetchGameData();
         window.showGlobalNotification?.({
           type: "success",
           title: "Artifact Acquired!",
-          message: `You have successfully acquired ${item.name}!`,
+          message: "Item has been added to your collection.",
+          icon: FaGift,
         });
       } catch (error: any) {
-        console.error("Gagal membeli item:", error);
         window.showGlobalNotification?.({
           type: "error",
           title: "Purchase Failed",
           message:
             error.response?.data?.message ||
-            "Could not complete the transaction.",
+            "Transaction could not be completed.",
         });
       }
     },
-    [playerData, shopItems, fetchGameData]
+    [refetchGameData]
   );
 
   const updatePlayerProfile = useCallback(
     async (newName: string, newAvatarUrl: string) => {
-      if (!playerData) return;
       try {
-        const response = await api.put("/users/profile", {
+        await api.put("/users/profile", {
           name: newName,
           avatarUrl: newAvatarUrl,
         });
-        const updatedUser = response.data;
-
-        updatePlayerData((prev) => {
-          if (!prev) return {};
-          return {
-            ...prev,
-            name: updatedUser.name,
-            avatarUrl: updatedUser.avatarUrl,
-          };
-        });
-
+        await refetchGameData();
         window.showGlobalNotification?.({
           type: "success",
           title: "Profile Updated",
           message: "Your commander profile has been successfully updated.",
+          icon: FaUserAstronaut,
         });
       } catch (error: any) {
-        console.error("Gagal update profil:", error);
         window.showGlobalNotification?.({
           type: "error",
           title: "Update Failed",
@@ -663,229 +444,149 @@ export const useGameData = (authUser: AuthUser | null) => {
         });
       }
     },
-    [playerData, updatePlayerData]
+    [refetchGameData]
   );
 
   const applyTheme = useCallback(
     async (themeValue: string) => {
       try {
-        const response = await api.put("/users/profile/apply-theme", {
-          themeValue,
-        });
-        const updatedUser = response.data;
-        updatePlayerData((prev) => {
-          if (!prev) return {};
-          return {
-            ...prev,
-            name: updatedUser.name,
-            avatarUrl: updatedUser.avatarUrl,
-            activeTheme: updatedUser.activeTheme,
-            activeAvatarFrameId: updatedUser.activeAvatarFrameId,
-          };
-        });
-
+        await api.put("/users/profile/apply-theme", { themeValue });
+        await refetchGameData();
         window.showGlobalNotification?.({
           type: "success",
           title: "Ship Interface Updated",
-          message: `Visual theme changed to "${updatedUser.activeTheme}".`,
+          message: `Visual theme changed.`,
           icon: FaPalette,
         });
       } catch (error: any) {
-        console.error("Gagal menerapkan tema:", error);
         window.showGlobalNotification?.({
           type: "error",
           title: "Failed to Apply Theme",
-          message:
-            error.response?.data?.message ||
-            "Could not apply the selected theme.",
+          message: error.response?.data?.message || "Could not apply theme.",
         });
       }
     },
-    [updatePlayerData]
+    [refetchGameData]
   );
 
   const applyAvatarFrame = useCallback(
     async (frameValue: string | null) => {
       try {
-        const response = await api.put("/users/profile/apply-frame", {
-          frameValue,
-        });
-        const updatedUser = response.data;
-
-        updatePlayerData((prev) => {
-          if (!prev) return {};
-          return {
-            ...prev,
-            activeAvatarFrameId: updatedUser.activeAvatarFrameId,
-          };
-        });
-
+        await api.put("/users/profile/apply-frame", { frameValue });
+        await refetchGameData();
         window.showGlobalNotification?.({
           type: "success",
           title: "Avatar Frame Updated",
-          message: frameValue
-            ? `Commander avatar frame has been set.`
-            : "Avatar frame has been reset.",
+          message: "Commander avatar frame has been set.",
           icon: FaStar,
         });
       } catch (error: any) {
-        console.error("Gagal menerapkan frame:", error);
         window.showGlobalNotification?.({
           type: "error",
           title: "Failed to Apply Frame",
-          message:
-            error.response?.data?.message ||
-            "Could not apply the selected frame.",
+          message: error.response?.data?.message || "Could not apply frame.",
         });
       }
     },
-    [updatePlayerData]
+    [refetchGameData]
   );
 
   const resetGameData = useCallback(async () => {
-    if (!authUser) return;
-
     try {
-      const response = await api.post("/user/profile/reset");
-      const resetData = response.data;
-
-      await fetchGameData();
-
+      await api.post("/users/profile/reset");
+      await refetchGameData();
       window.showGlobalNotification?.({
         type: "warning",
         title: "Game Reset!",
-        message: "Your mission logs, XP, and artifacts have been reset.",
+        message: "All progress has been reset.",
         icon: FaRedo,
-        duration: 6000,
       });
-    } catch (error) {
-      console.error("Gagal mereset data:", error);
+    } catch (error: any) {
       window.showGlobalNotification?.({
         type: "error",
         title: "Reset Failed",
-        message: "Could not reset your game data on the server.",
+        message: "Could not reset data.",
       });
     }
-  }, [authUser, fetchGameData]);
+  }, [refetchGameData]);
 
   const claimMissionReward = useCallback(
     async (missionId: string) => {
-      if (!playerData) return;
-
       try {
-        const response = await api.post(`/missions/${missionId}/claim`);
-        const { eventResult } = response.data;
-
-        if (eventResult.leveledUp) {
-          window.showGlobalNotification?.({
-            type: "quest",
-            title: "Promotion!",
-            message: `Your reward propelled you to Level ${eventResult.leveledUp.to}!`,
-            icon: FaUserShield,
-          });
-        }
-
-        if (eventResult.badgesEarned && eventResult.badgesEarned.length > 0) {
-          eventResult.badgesEarned.forEach((badge: PlayerBadge) => {
-            window.showGlobalNotification?.({
-              type: "success",
-              title: "Commendation Earned!",
-              message: `New insignia acquired: ${badge.name}`,
-              icon: FaAward,
-            });
-          });
-        }
-
-        fetchGameData();
+        await api.post(`/missions/${missionId}/claim`);
+        await refetchGameData();
+        window.showGlobalNotification?.({
+          type: "success",
+          title: "Reward Claimed!",
+          message: "Mission reward has been successfully claimed.",
+          icon: FaTrophy,
+        });
       } catch (error: any) {
-        console.error("Gagal klaim hadiah misi:", error);
         window.showGlobalNotification?.({
           type: "error",
           title: "Claim Failed",
-          message:
-            error.response?.data?.message || "Could not claim mission reward.",
+          message: error.response?.data?.message || "Could not claim reward.",
         });
       }
     },
-    [playerData, fetchGameData]
+    [refetchGameData]
   );
 
   const claimDailyDiscovery = useCallback(async () => {
-    if (!playerData) return;
-
     try {
-      const response = await api.post("/daily/claim-discovery");
-      const { rewardCredits, rewardXp } = response.data;
-
-      fetchGameData();
-
+      await api.post("/daily/claim-discovery");
+      await refetchGameData();
       window.showGlobalNotification?.({
         type: "success",
         title: "Supply Drop Acquired!",
-        message: `You found +${rewardCredits} CP and +${rewardXp} XP!`,
+        message: "You found new resources!",
         icon: FaGift,
       });
     } catch (error: any) {
-      console.error("Gagal klaim discovery:", error);
       window.showGlobalNotification?.({
         type: "error",
         title: "Claim Failed",
         message:
-          error.response?.data?.message || "Supply drop already claimed today.",
+          error.response?.data?.message || "Supply drop already claimed.",
       });
     }
-  }, [playerData, fetchGameData]);
+  }, [refetchGameData]);
 
   const claimProjectTaskReward = useCallback(
     async (taskId: string) => {
-      if (!playerData) return;
-
       try {
-        const response = await api.post(`/tasks/${taskId}/claim-reward`);
-        const { task: updatedTask, eventResult } = response.data;
-
+        await api.post(`/tasks/${taskId}/claim-reward`);
+        await refetchGameData();
         window.showGlobalNotification?.({
           type: "success",
           title: "Reward Claimed!",
-          message: `Reward for "${updatedTask.title}" has been claimed.`,
+          message: "Project task reward has been successfully claimed.",
           icon: FaTrophy,
         });
-
-        if (eventResult?.leveledUp) {
-          window.showGlobalNotification?.({
-            type: "quest",
-            title: "Promotion!",
-            message: `Reward propelled a crew member to Level ${eventResult.leveledUp.to}!`,
-            icon: FaUserShield,
-          });
-        }
       } catch (error: any) {
         console.error(`Gagal klaim hadiah tugas proyek ${taskId}:`, error);
         window.showGlobalNotification?.({
           type: "error",
           title: "Claim Failed",
-          message:
-            error.response?.data?.message || "Could not claim the reward.",
+          message: error.response?.data?.message || "Could not claim reward.",
         });
       }
     },
-    [playerData]
+    [refetchGameData]
   );
 
   const applyAvatar = useCallback(
     async (avatarUrl: string) => {
-      if (!playerData) return;
+      const currentName = user?.name || "";
+
       try {
-        const response = await api.put("/users/profile", {
-          name: playerData.name,
+        await api.put("/users/profile", {
+          name: currentName,
           avatarUrl: avatarUrl,
         });
-        const updatedUser = response.data;
 
-        updatePlayerData((prev) => {
-          if (!prev) return {};
-          return { ...prev, avatarUrl: updatedUser.avatarUrl };
-        });
+        // Panggil refetch untuk mendapatkan avatarUrl terbaru
+        await refetchGameData();
 
         window.showGlobalNotification?.({
           type: "success",
@@ -896,28 +597,28 @@ export const useGameData = (authUser: AuthUser | null) => {
         console.error("Gagal menerapkan avatar:", error);
       }
     },
-    [playerData, updatePlayerData]
+    [user, refetchGameData]
   );
-
   return {
     playerData,
-    isLoadingData,
-    updatePlayerData,
+    isLoadingData: isGameDataLoading, // Kirimkan status loading dari context
+    SHOP_ITEMS_CONFIG: shopItems,
+    ALL_BADGES_CONFIG: allBadges,
+    // Semua fungsi aksi yang sudah di-refactor:
     addTask,
     editTask,
     completeTask,
-    getXpBoundaries,
-    handleDailyLogin,
+    claimProjectTaskReward,
     purchaseShopItem,
     updatePlayerProfile,
     applyTheme,
     applyAvatarFrame,
-    resetGameData,
     claimMissionReward,
-    SHOP_ITEMS_CONFIG: shopItems,
-    ALL_BADGES_CONFIG: allBadges,
     claimDailyDiscovery,
-    claimProjectTaskReward,
+    resetGameData,
     applyAvatar,
+    // getXpBoundaries dan handleDailyLogin juga sudah kita perbaiki
+    getXpBoundaries,
+    handleDailyLogin,
   };
 };

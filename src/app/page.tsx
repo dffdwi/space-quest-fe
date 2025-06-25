@@ -15,24 +15,33 @@ import {
   FaUser,
   FaUsersCog,
 } from "react-icons/fa";
-import { useGameData, PlayerTask, XP_PER_LEVEL } from "@/hooks/useGameData";
+import {
+  useGameData,
+  PlayerTask,
+  XP_PER_LEVEL,
+  PlayerBadge,
+  PlayerMission,
+} from "@/hooks/useGameData";
 import AddTaskModal from "@/components/AddTaskModal";
 import StatsChart from "@/components/StatsChart";
 import Link from "next/link";
 import IconFactory from "@/components/IconFactory";
 
 export default function DashboardPage() {
-  const { user, isLoading: authLoading } = useAuth();
   const {
+    user,
+    isLoading: authLoading,
     playerData,
-    isLoadingData,
+    isGameDataLoading: isLoadingData,
+  } = useAuth();
+  const {
     completeTask,
     addTask,
     editTask,
     claimMissionReward,
     ALL_BADGES_CONFIG,
     claimDailyDiscovery,
-  } = useGameData(user);
+  } = useGameData();
   const router = useRouter();
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -80,23 +89,23 @@ export default function DashboardPage() {
     today.getDate() + 1
   );
 
-  const allTasksToday = playerData.tasks.filter((t) => {
+  const allTasksToday = playerData.tasks.filter((t: PlayerTask) => {
     if (!t.dueDate || t.completed) return false;
     const taskDueDate = new Date(t.dueDate);
     return taskDueDate >= startOfDay && taskDueDate < endOfDay;
   });
 
   const personalTasksToday = allTasksToday
-    .filter((t) => t.type === "personal")
+    .filter((t: PlayerTask) => t.type === "personal")
     .slice(0, 3);
   const projectTasksToday = allTasksToday
-    .filter((t) => t.type === "project")
+    .filter((t: PlayerTask) => t.type === "project")
     .slice(0, 3);
 
   const latestBadge =
     playerData.earnedBadgeIds.length > 0
       ? ALL_BADGES_CONFIG.find(
-          (b) =>
+          (b: PlayerBadge) =>
             b.badgeId ===
             playerData.earnedBadgeIds[playerData.earnedBadgeIds.length - 1]
         )
@@ -126,7 +135,7 @@ export default function DashboardPage() {
           </h3>
           <div className="space-y-3">
             {personalTasksToday.length > 0 ? (
-              personalTasksToday.map((task) => (
+              personalTasksToday.map((task: PlayerTask) => (
                 <div
                   key={task.taskId}
                   className="task-item-bg flex items-center justify-between p-3.5 bg-gray-700 hover:bg-gray-600 rounded-lg border border-gray-600"
@@ -163,7 +172,7 @@ export default function DashboardPage() {
           </h3>
           <div className="space-y-3">
             {projectTasksToday.length > 0 ? (
-              projectTasksToday.map((task) => (
+              projectTasksToday.map((task: PlayerTask) => (
                 <Link
                   href={`/crew-projects`}
                   key={task.taskId}
@@ -196,7 +205,7 @@ export default function DashboardPage() {
         </h2>
         <div className="space-y-4">
           {playerData.missions.length > 0 ? (
-            playerData.missions.map((mission) => {
+            playerData.missions.map((mission: PlayerMission) => {
               const isCompleted = mission.currentProgress >= mission.target;
               const isClaimed = mission.isClaimed || false;
 

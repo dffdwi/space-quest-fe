@@ -62,15 +62,14 @@ const DailyCapTracker = ({
   );
 };
 export default function Missions() {
-  const { user, isLoading: authLoading } = useAuth();
   const {
+    user,
+    isLoading: authLoading,
     playerData,
-    isLoadingData,
-    completeTask,
-    addTask,
-    editTask,
-    claimMissionReward,
-  } = useGameData(user);
+    isGameDataLoading: isLoadingData,
+  } = useAuth();
+
+  const { completeTask, addTask, editTask } = useGameData();
   const router = useRouter();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,16 +90,20 @@ export default function Missions() {
     );
   }
 
-  const personalTasks = playerData.tasks.filter((t) => t.type === "personal");
+  const personalTasks = playerData.tasks.filter(
+    (t: PlayerTask) => t.type === "personal"
+  );
 
   const incompleteTasks = personalTasks
-    .filter((t) => !t.completed)
-    .sort((a, b) =>
+    .filter((t: PlayerTask) => !t.completed)
+    .sort((a: PlayerTask, b: PlayerTask) =>
       (a.dueDate || "9999-12-31").localeCompare(b.dueDate || "9999-12-31")
     );
   const completedTasks = personalTasks
-    .filter((t) => t.completed)
-    .sort((a, b) => (b.completedAt || "").localeCompare(a.completedAt || ""));
+    .filter((t: PlayerTask) => t.completed)
+    .sort((a: PlayerTask, b: PlayerTask) =>
+      (b.completedAt || "").localeCompare(a.completedAt || "")
+    );
 
   const openCreateModal = () => {
     setEditingTask(null);
@@ -224,7 +227,7 @@ export default function Missions() {
           </h3>
           <div className="space-y-3">
             {incompleteTasks.length > 0 ? (
-              incompleteTasks.map((task) => (
+              incompleteTasks.map((task: PlayerTask) => (
                 <TaskItemCard key={task.taskId} task={task} />
               ))
             ) : (
@@ -242,7 +245,7 @@ export default function Missions() {
           </h3>
           <div className="space-y-3">
             {completedTasks.length > 0 ? (
-              completedTasks.map((task) => (
+              completedTasks.map((task: PlayerTask) => (
                 <TaskItemCard key={task.taskId} task={task} />
               ))
             ) : (

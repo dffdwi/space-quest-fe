@@ -14,7 +14,6 @@ import {
   FaEnvelopeOpenText,
 } from "react-icons/fa";
 import { useGameData } from "@/hooks/useGameData";
-import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { href: "/", icon: FaRocket, label: "Starship Dashboard" },
@@ -36,8 +35,7 @@ const Sidebar = ({
   onClose: () => void;
 }) => {
   const pathname = usePathname();
-  const { user } = useAuth();
-  const { playerData } = useGameData(user);
+  const { playerData } = useGameData();
 
   const pendingInvitationCount = playerData?.pendingInvitationCount || 0;
 

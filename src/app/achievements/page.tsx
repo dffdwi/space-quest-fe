@@ -8,8 +8,13 @@ import { FaShieldAlt, FaLock, FaRocket } from "react-icons/fa";
 import IconFactory from "@/components/IconFactory";
 
 export default function AchievementsPage() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { playerData, isLoadingData, ALL_BADGES_CONFIG } = useGameData(user);
+  const {
+    user,
+    isLoading: authLoading,
+    playerData,
+    isGameDataLoading: isLoadingData,
+  } = useAuth();
+  const { ALL_BADGES_CONFIG } = useGameData();
   const router = useRouter();
 
   useEffect(() => {
@@ -44,75 +49,65 @@ export default function AchievementsPage() {
           A collection of commendations earned throughout your interstellar
           journey. Each medal signifies a remarkable feat!
         </p>
-
-        {ALL_BADGES_CONFIG.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6">
-            {ALL_BADGES_CONFIG.map((badgeConfig) => {
-              const isEarned = earnedBadgeIdsSet.has(badgeConfig.badgeId);
-
-              return (
-                <div
-                  key={badgeConfig.badgeId}
-                  className={`card p-5 rounded-xl text-center transition-all duration-300 ease-in-out
-                               ${
-                                 isEarned
-                                   ? "bg-gray-700/70 border-2 border-amber-500 shadow-lg scale-105 hover:shadow-amber-500/30"
-                                   : "bg-gray-800/50 border-gray-700 opacity-60 hover:opacity-90"
-                               }`}
-                  title={
-                    isEarned
-                      ? `Earned: ${badgeConfig.name}`
-                      : `Locked: ${badgeConfig.name}`
-                  }
-                >
-                  <div className="relative mb-4">
-                    <IconFactory
-                      iconName={badgeConfig.icon}
-                      className={`mx-auto text-5xl md:text-6xl 
-                                  ${
-                                    isEarned
-                                      ? badgeConfig.color
-                                      : "text-gray-500"
-                                  } 
-                                  transition-all duration-300 
-                                  ${
-                                    isEarned
-                                      ? "transform rotate-0"
-                                      : "transform group-hover:rotate-0"
-                                  }`}
-                    />
-                    {!isEarned && (
-                      <FaLock className="absolute top-1 right-1 text-xs text-gray-500" />
-                    )}
-                  </div>
-                  <h3
-                    className={`font-semibold text-md md:text-lg ${
-                      isEarned ? "text-gray-100" : "text-gray-400"
-                    }`}
-                  >
-                    {badgeConfig.name}
-                  </h3>
-                  <p
-                    className={`text-xs mt-1 ${
-                      isEarned ? "text-gray-300" : "text-gray-500"
-                    }`}
-                  >
-                    {badgeConfig.description}
-                  </p>
-                  {isEarned && (
-                    <p className="mt-3 text-xs font-bold text-green-400 uppercase tracking-wider">
-                      ACHIEVED
-                    </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6">
+          {ALL_BADGES_CONFIG.map((badgeConfig) => {
+            const isEarned = earnedBadgeIdsSet.has(badgeConfig.badgeId);
+            return (
+              <div
+                key={badgeConfig.badgeId}
+                className={`card p-5 rounded-xl text-center transition-all duration-300 ease-in-out
+                           ${
+                             isEarned
+                               ? "bg-gray-700/70 border-2 border-amber-500 shadow-lg scale-105 hover:shadow-amber-500/30"
+                               : "bg-gray-800/50 border-gray-700 opacity-60 hover:opacity-90"
+                           }`}
+                title={
+                  isEarned
+                    ? `Earned: ${badgeConfig.name}`
+                    : `Locked: ${badgeConfig.name}`
+                }
+              >
+                <div className="relative mb-4">
+                  <IconFactory
+                    iconName={badgeConfig.icon}
+                    className={`mx-auto text-5xl md:text-6xl 
+                                ${
+                                  isEarned ? badgeConfig.color : "text-gray-500"
+                                } 
+                                transition-all duration-300 
+                                ${
+                                  isEarned
+                                    ? "transform rotate-0"
+                                    : "transform group-hover:rotate-0"
+                                }`}
+                  />
+                  {!isEarned && (
+                    <FaLock className="absolute top-1 right-1 text-xs text-gray-500" />
                   )}
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-center text-gray-500 py-8">
-            No commendations defined in the archives yet.
-          </p>
-        )}
+                <h3
+                  className={`font-semibold text-md md:text-lg ${
+                    isEarned ? "text-gray-100" : "text-gray-400"
+                  }`}
+                >
+                  {badgeConfig.name}
+                </h3>
+                <p
+                  className={`text-xs mt-1 ${
+                    isEarned ? "text-gray-300" : "text-gray-500"
+                  }`}
+                >
+                  {badgeConfig.description}
+                </p>
+                {isEarned && (
+                  <p className="mt-3 text-xs font-bold text-green-400 uppercase tracking-wider">
+                    ACHIEVED
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
