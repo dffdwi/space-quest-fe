@@ -73,10 +73,10 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label
-                className="block text-sm font-medium text-gray-300 mb-2"
+                className="block text-sm font-medium text-gray-300 mb-2 required"
                 htmlFor="name"
               >
-                Commander Name (Optional)
+                Commander Name
               </label>
               <input
                 type="text"
@@ -90,7 +90,7 @@ export default function RegisterPage() {
 
             <div>
               <label
-                className="block text-sm font-medium text-gray-300 mb-2"
+                className="block text-sm font-medium text-gray-300 mb-2 required"
                 htmlFor="email"
               >
                 Email Address
@@ -108,7 +108,7 @@ export default function RegisterPage() {
 
             <div>
               <label
-                className="block text-sm font-medium text-gray-300 mb-2"
+                className="block text-sm font-medium text-gray-300 mb-2 required"
                 htmlFor="password"
               >
                 Password (min. 8 characters)
