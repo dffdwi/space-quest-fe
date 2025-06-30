@@ -1,11 +1,24 @@
 "use client";
 
 import IconFactory from "@/components/IconFactory";
+import InfoModal from "@/components/InfoModal";
 import { useAuth } from "@/contexts/AuthContext";
-import { useGameData, ShopItem, PlayerActivePowerUp } from "@/hooks/useGameData";
+import {
+  useGameData,
+  ShopItem,
+  PlayerActivePowerUp,
+} from "@/hooks/useGameData";
 import { useRouter } from "next/navigation";
-import { JSX, useEffect } from "react";
-import { FaStore, FaCoins, FaCheck, FaRocket, FaGift } from "react-icons/fa";
+import { JSX, useEffect, useState } from "react";
+import {
+  FaStore,
+  FaCoins,
+  FaCheck,
+  FaRocket,
+  FaGift,
+  FaLock,
+  FaTrophy,
+} from "react-icons/fa";
 
 export default function StarMarketPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -15,8 +28,14 @@ export default function StarMarketPage() {
     purchaseShopItem,
     SHOP_ITEMS_CONFIG,
     applyAvatar,
+    redeemVoucher,
   } = useGameData();
   const router = useRouter();
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [infoModalContent, setInfoModalContent] = useState<{
+    title: string;
+    message: string | React.ReactNode;
+  }>({ title: "", message: "" });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -37,7 +56,8 @@ export default function StarMarketPage() {
 
   const purchasedIds = new Set(playerData.purchasedShopItemIds);
   const activeThemeId = SHOP_ITEMS_CONFIG.find(
-    (item: ShopItem) => item.type === "theme" && item.value === playerData.activeTheme
+    (item: ShopItem) =>
+      item.type === "theme" && item.value === playerData.activeTheme
   )?.itemId;
   const activeFrameId = SHOP_ITEMS_CONFIG.find(
     (item: ShopItem) =>
@@ -49,6 +69,32 @@ export default function StarMarketPage() {
       applyAvatar(item.value);
     } else {
       purchaseShopItem(item.itemId);
+    }
+  };
+
+  const handleRedeem = async (item: ShopItem) => {
+    const result = await redeemVoucher(item.itemId);
+    if (result.success) {
+      setInfoModalContent({
+        title: "Congratulation!",
+        message: (
+          <>
+            <p className="mb-2">
+              You have successfully redeemed the <strong>{item.name}</strong>!
+            </p>
+            <p className="text-sm text-gray-400">
+              Please contact the SpaceQuest admin to claim your prize.
+            </p>
+          </>
+        ),
+      });
+      setIsInfoModalOpen(true);
+    } else {
+      window.showGlobalNotification?.({
+        type: "error",
+        title: "Redemption Failed",
+        message: result.message,
+      });
     }
   };
 
@@ -77,6 +123,7 @@ export default function StarMarketPage() {
               "Ship Customization",
               "Commander Gear",
               "Consumables",
+              "Vouchers",
             ] as const
           ).map((category) => {
             const itemsInCategory = SHOP_ITEMS_CONFIG.filter(
@@ -106,6 +153,10 @@ export default function StarMarketPage() {
                     const canAfford = playerData.credits >= item.price;
                     const ItemIcon = item.icon || FaGift;
 
+                    const hasRequiredBadge = item.requiredBadgeId
+                      ? playerData.earnedBadgeIds.includes(item.requiredBadgeId)
+                      : true;
+
                     let buttonText = `${item.price} CP`;
                     let buttonDisabled = false;
                     let buttonClasses = "btn-primary hover:bg-indigo-500";
@@ -113,7 +164,20 @@ export default function StarMarketPage() {
                       <FaCoins className="mr-2" />
                     );
 
-                    if (isActive) {
+                    if (item.type === "voucher") {
+                      if (hasRequiredBadge) {
+                        buttonText = "Redeem";
+                        buttonClasses = "btn-warning hover:bg-amber-600";
+                        buttonDisabled = false;
+                        actionIcon = <FaGift className="mr-2" />;
+                      } else {
+                        buttonText = "Badge Required";
+                        buttonClasses =
+                          "bg-gray-700 opacity-60 cursor-not-allowed";
+                        buttonDisabled = true;
+                        actionIcon = <FaLock className="mr-2" />;
+                      }
+                    } else if (isActive) {
                       buttonText = "Equipped";
                       buttonClasses = "btn-success cursor-default";
                       buttonDisabled = true;
@@ -192,7 +256,13 @@ export default function StarMarketPage() {
                           </p>
                         </div>
                         <button
-                          onClick={() => handlePurchase(item)}
+                          onClick={() => {
+                            if (item.type === "voucher") {
+                              handleRedeem(item);
+                            } else {
+                              handlePurchase(item);
+                            }
+                          }}
                           disabled={buttonDisabled}
                           className={`btn w-full mt-auto ${buttonClasses} flex items-center justify-center`}
                         >
@@ -213,6 +283,14 @@ export default function StarMarketPage() {
           </p>
         )}
       </div>
+      <InfoModal
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+        title={infoModalContent.title}
+        message={infoModalContent.message}
+        icon={FaTrophy}
+        iconColor="text-amber-400"
+      />
     </div>
   );
 }

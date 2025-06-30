@@ -78,10 +78,15 @@ export interface ShopItem {
   name: string;
   description: string;
   price: number;
-  type: "theme" | "avatar_frame" | "power_up" | "cosmetic";
+  type: "theme" | "avatar_frame" | "power_up" | "cosmetic" | "voucher";
   value: string;
   icon?: string;
-  category?: "Ship Customization" | "Commander Gear" | "Consumables";
+  category?:
+    | "Ship Customization"
+    | "Commander Gear"
+    | "Consumables"
+    | "Vouchers";
+  requiredBadgeId?: string;
   duration?: number;
 }
 
@@ -137,118 +142,9 @@ export const XP_PER_LEVEL = [
   0, 100, 250, 500, 850, 1300, 1850, 2500, 3250, 4100, 5000, 7000, 10000,
 ];
 
-const iconMap: { [key: string]: React.ElementType } = {
-  FaRegLightbulb: FaRegLightbulb,
-  FaSpaceShuttle: FaSpaceShuttle,
-  FaUserAstronaut: FaUserAstronaut,
-  FaGraduationCap: FaGraduationCap,
-  FaCalendarCheck: FaCalendarCheck,
-  FaCoins: FaCoins,
-  FaRocket: FaRocket,
-  FaAward: FaAward,
-};
+export let ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [];
 
-export let ALL_BADGES_CONFIG: Omit<PlayerBadge, "earnedAt">[] = [
-  {
-    badgeId: "b_first_mission",
-    name: "First Contact",
-    description: "Complete your first mission log.",
-    icon: "FaRegLightbulb",
-    color: "text-yellow-400",
-  },
-  {
-    badgeId: "b_explorer_initiate",
-    name: "Explorer Initiate",
-    description: "Complete 3 mission logs.",
-    icon: "FaSpaceShuttle",
-    color: "text-sky-400",
-  },
-  {
-    badgeId: "b_diligent_commander",
-    name: "Diligent Commander",
-    description: "Complete 10 mission logs.",
-    icon: "FaUserAstronaut",
-    color: "text-purple-400",
-  },
-  {
-    badgeId: "b_level_5_cadet",
-    name: "Cadet Level 5",
-    description: "Reach Level 5.",
-    icon: "FaGraduationCap",
-    color: "text-indigo-400",
-  },
-  {
-    badgeId: "b_daily_streak_3",
-    name: "Consistent Voyager (3 Days)",
-    description: "Log in 3 days in a row.",
-    icon: "FaCalendarCheck",
-    color: "text-teal-400",
-  },
-  {
-    badgeId: "b_credits_collector",
-    name: "Credits Collector",
-    description: "Accumulate 500 Cosmic Credits.",
-    icon: "FaCoins",
-    color: "text-amber-400",
-  },
-];
-
-export let SHOP_ITEMS_CONFIG: ShopItem[] = [
-  {
-    itemId: "theme_nebula_dark",
-    name: "Nebula Dark Theme",
-    description:
-      "Navigate the cosmos in a sleek, dark interface with vibrant nebula accents.",
-    price: 250,
-    type: "theme",
-    value: "theme-nebula-dark",
-    icon: "FaPalette",
-    category: "Ship Customization",
-  },
-  {
-    itemId: "theme_starfield_light",
-    name: "Starfield Light Theme",
-    description:
-      "A bright and clear interface, like gazing upon a field of distant stars.",
-    price: 200,
-    type: "theme",
-    value: "theme-starfield-light",
-    icon: "FaPalette",
-    category: "Ship Customization",
-  },
-  {
-    itemId: "avatar_frame_gold_commander",
-    name: "Gold Commander Frame",
-    description: "A prestigious gold frame for your commander avatar.",
-    price: 150,
-    type: "avatar_frame",
-    value: "gold-commander-frame",
-    icon: "FaStar",
-    category: "Commander Gear",
-  },
-  {
-    itemId: "avatar_frame_nova_burst",
-    name: "Nova Burst Frame",
-    description: "An energetic frame resembling a stellar nova.",
-    price: 120,
-    type: "avatar_frame",
-    value: "nova-burst-frame",
-    icon: "FaStar",
-    category: "Commander Gear",
-  },
-  {
-    itemId: "power_up_xp_boost_small",
-    name: "XP Hyper-Boost (Small)",
-    description:
-      "Doubles XP gained from the next completed mission log. Single use.",
-    price: 75,
-    type: "power_up",
-    value: "xp_boost_small_1use",
-    icon: "FaFlask",
-    category: "Consumables",
-    duration: 1,
-  },
-];
+export let SHOP_ITEMS_CONFIG: ShopItem[] = [];
 
 export const useGameData = () => {
   const {
@@ -584,8 +480,6 @@ export const useGameData = () => {
           name: currentName,
           avatarUrl: avatarUrl,
         });
-
-        // Panggil refetch untuk mendapatkan avatarUrl terbaru
         await refetchGameData();
 
         window.showGlobalNotification?.({
@@ -599,12 +493,31 @@ export const useGameData = () => {
     },
     [user, refetchGameData]
   );
+
+  const redeemVoucher = useCallback(
+    async (itemId: string): Promise<{ success: boolean; message: string }> => {
+      try {
+        const response = await api.post("/shop/redeem-voucher", { itemId });
+        await refetchGameData();
+        return {
+          success: true,
+          message: response.data.message || "Voucher redeemed!",
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          message: error.response?.data?.message || "Could not redeem voucher.",
+        };
+      }
+    },
+    [refetchGameData]
+  );
+
   return {
     playerData,
-    isLoadingData: isGameDataLoading, // Kirimkan status loading dari context
+    isLoadingData: isGameDataLoading,
     SHOP_ITEMS_CONFIG: shopItems,
     ALL_BADGES_CONFIG: allBadges,
-    // Semua fungsi aksi yang sudah di-refactor:
     addTask,
     editTask,
     completeTask,
@@ -617,8 +530,8 @@ export const useGameData = () => {
     claimDailyDiscovery,
     resetGameData,
     applyAvatar,
-    // getXpBoundaries dan handleDailyLogin juga sudah kita perbaiki
     getXpBoundaries,
     handleDailyLogin,
+    redeemVoucher,
   };
 };

@@ -1,10 +1,11 @@
 "use client";
 
+import InfoModal from "@/components/InfoModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { ShopItem, useGameData } from "@/hooks/useGameData";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent, useMemo } from "react";
 import {
   FaCog,
   FaSave,
@@ -14,6 +15,8 @@ import {
   FaRedo,
   FaRocket,
   FaShieldAlt,
+  FaTicketAlt,
+  FaTrophy,
 } from "react-icons/fa";
 
 export default function ShipSettingsPage() {
@@ -40,6 +43,11 @@ export default function ShipSettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [infoModalContent, setInfoModalContent] = useState<{
+    title: string;
+    message: React.ReactNode;
+  }>({ title: "", message: "" });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -113,6 +121,33 @@ export default function ShipSettingsPage() {
     ) {
       resetGameData();
     }
+  };
+
+  const ownedVouchers = useMemo(() => {
+    if (!playerData) return [];
+    return SHOP_ITEMS_CONFIG.filter(
+      (item) =>
+        item.type === "voucher" &&
+        playerData.purchasedShopItemIds.includes(item.itemId)
+    );
+  }, [playerData, SHOP_ITEMS_CONFIG]);
+
+  const handleClaimVoucherClick = (voucherName: string) => {
+    setInfoModalContent({
+      title: "Congratulation!",
+      message: (
+        <>
+          <p className="mb-2">
+            You own the <strong>{voucherName}</strong>!
+          </p>
+          <p className="text-sm text-gray-400">
+            To complete the redemption, please contact the SpaceQuest
+            administration.
+          </p>
+        </>
+      ),
+    });
+    setIsInfoModalOpen(true);
   };
 
   if (authLoading || isLoadingData || !playerData) {
@@ -367,6 +402,42 @@ export default function ShipSettingsPage() {
           </div>
         </section>
 
+        <section className="mb-10">
+          <h2 className="text-xl font-semibold text-green-400 mb-4 border-b border-gray-700 pb-2">
+            <FaTicketAlt className="inline mr-2" />
+            My Vouchers
+          </h2>
+          {ownedVouchers.length > 0 ? (
+            <div className="space-y-3">
+              {ownedVouchers.map((voucher) => (
+                <div
+                  key={voucher.itemId}
+                  className="p-4 bg-gray-700 rounded-lg flex items-center justify-between"
+                >
+                  <div>
+                    <p className="font-bold text-lg text-white">
+                      {voucher.name}
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      {voucher.description}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleClaimVoucherClick(voucher.name)}
+                    className="btn btn-success"
+                  >
+                    Claim
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 italic">
+              You do not own any vouchers.
+            </p>
+          )}
+        </section>
+
         <section>
           <h2 className="text-xl font-semibold text-red-500 mb-4 border-b border-gray-700 pb-2">
             🚨 Danger Zone 🚨
@@ -382,6 +453,14 @@ export default function ShipSettingsPage() {
           </button>
         </section>
       </div>
+      <InfoModal
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+        title={infoModalContent.title}
+        message={infoModalContent.message}
+        icon={FaTrophy}
+        iconColor="text-amber-400"
+      />
     </div>
   );
 }
